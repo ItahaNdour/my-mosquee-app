@@ -86,8 +86,22 @@
     </div>
   </section>
 
+  <!-- PUBLIC DON -->
   <section class="card don-public">
     <h3>💰 Faire un don</h3>
+
+    <div class="don-category">
+      <div class="don-category-label">
+        <i class="fa-solid fa-tags"></i> Catégorie du don
+      </div>
+      <select id="don-public-category" title="Catégorie du don">
+        <option value="Zakat">Zakat</option>
+        <option value="Sadaqa" selected>Sadaqa</option>
+        <option value="Travaux">Travaux / Entretien</option>
+      </select>
+      <div class="small don-category-help" id="don-public-category-help">—</div>
+    </div>
+
     <ul class="don-lines">
       <li><span><i class="fa-solid fa-wallet" style="color:#0ea5e9"></i> Wave Money</span><strong id="wave-number">—</strong></li>
       <li><span><i class="fa-solid fa-mobile-screen-button" style="color:#f97316"></i> Orange Money</span><strong id="orange-number">—</strong></li>
@@ -101,6 +115,7 @@
     </div>
   </section>
 
+  <!-- ADMIN DON -->
   <section class="card don-admin" id="don-admin">
     <h3 class="don-admin-title"><i class="fa-solid fa-chart-simple"></i> Suivi des dons</h3>
 
@@ -116,7 +131,6 @@
       <div>Reste : <span id="don-left">0</span> CFA</div>
     </div>
 
-    <!-- Stats semaine -->
     <div class="kpis kpis-week">
       <div><i class="fa-solid fa-calendar-week"></i> Total semaine : <span id="don-week">0</span> CFA</div>
       <div>Zakat : <span id="don-week-zakat">0</span></div>
@@ -136,7 +150,7 @@
       <select id="don-method"><option>Wave</option><option>Orange</option><option>Espèces</option></select>
       <select id="don-category" title="Catégorie">
         <option>Zakat</option>
-        <option>Sadaqa</option>
+        <option selected>Sadaqa</option>
         <option>Travaux</option>
       </select>
       <input id="don-ref" placeholder="Réf./Remarque"/>
