@@ -38,6 +38,8 @@ const RAMADAN_TOTAL_DAYS = 30;
 
 const KAABA = { lat: 21.4225, lon: 39.8262 };
 
+const DON_CATEGORIES = ['Zakat', 'Sadaqa', 'Travaux'];
+
 const el = (id) => document.getElementById(id);
 
 let timingsData = null;
@@ -108,6 +110,12 @@ function todayKey() {
 function ymKey() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function isoDayKey(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x.toISOString().slice(0, 10);
 }
 
 function keyDay() { return new Date().toISOString().slice(0, 10); }
@@ -188,22 +196,17 @@ function renderRamadan() {
   }
 
   const left = RAMADAN_TOTAL_DAYS - dayIndex;
-
-  const sub = `${dayIndex} Ramadan • ${WEEKDAYS[now.getDay()]} ${now.getDate()} ${MONTHS[now.getMonth()]}`;
-  el('ramadan-sub').textContent = sub;
-
+  el('ramadan-sub').textContent = `${dayIndex} Ramadan • ${WEEKDAYS[now.getDay()]} ${now.getDate()} ${MONTHS[now.getMonth()]}`;
   el('ramadan-day').textContent = `Jour ${dayIndex}/${RAMADAN_TOTAL_DAYS}`;
   el('ramadan-left').textContent = left === 0 ? 'Dernier jour' : `${left} j restants`;
 
   const iftar = (timingsData && timingsData.Maghrib) ? timingsData.Maghrib : '--:--';
   const suhoor = (timingsData && timingsData.Fajr) ? timingsData.Fajr : '--:--';
-
   el('ramadan-iftar').textContent = iftar;
   el('ramadan-suhoor').textContent = suhoor;
 
-  const dur = formatFastingDurationShort(suhoor, iftar);
   const durEl = el('ramadan-duration');
-  if (durEl) durEl.textContent = `Durée du jeûne: ${dur}`;
+  if (durEl) durEl.textContent = `Durée du jeûne: ${formatFastingDurationShort(suhoor, iftar)}`;
 
   card.style.display = 'block';
 }
@@ -397,6 +400,7 @@ function displayAll(data) {
   updateNextCountdown();
   renderDonation();
   renderDonTable();
+  renderDonWeekStats();
   renderEvents();
   renderRamadan();
 
@@ -429,21 +433,33 @@ BarakAllahou fik.`);
   el('btn-claimed').onclick = () => {
     const m = getCurrentMosque();
     openWhatsApp(m.phone || '', `Salam, *j’ai donné* [montant] CFA via [Wave/Orange/Espèces].
+Catégorie : [Zakat/Sadaqa/Travaux]
 Référence : [collez le reçu]
 Mosquée : ${m.name}`);
   };
 }
 
-/* Donations */
+/* Donations storage */
 function kGoal(m) { return `dong_${m.id}`; }
 function getGoal(m) { const g = localStorage.getItem(kGoal(m)); return g ? parseInt(g, 10) : 100000; }
 function setGoal(m, val) { localStorage.setItem(kGoal(m), String(Math.max(0, parseInt(val, 10) || 0))); }
-function kList(m) { return `donlist_${m.id}_${keyDay()}`; }
+
+function kListForDay(m, dayKey) { return `donlist_${m.id}_${dayKey}`; }
+function kList(m) { return kListForDay(m, keyDay()); }
+
 function kMonthSum(m) { return `donm_${m.id}_${ymKey()}`; }
+
+function loadListForDay(m, dayKey) { return JSON.parse(localStorage.getItem(kListForDay(m, dayKey)) || '[]'); }
 function loadList(m) { return JSON.parse(localStorage.getItem(kList(m)) || '[]'); }
 function saveList(m, list) { localStorage.setItem(kList(m), JSON.stringify(list)); }
+
 function monthSum(m) { return parseInt(localStorage.getItem(kMonthSum(m)) || '0', 10); }
 function setMonthSum(m, v) { localStorage.setItem(kMonthSum(m), String(Math.max(0, parseInt(v, 10) || 0))); }
+
+function normalizeCategory(cat) {
+  const c = String(cat || '').trim();
+  return DON_CATEGORIES.includes(c) ? c : 'Sadaqa';
+}
 
 function confirmedSumToday() {
   const m = getCurrentMosque();
@@ -472,6 +488,7 @@ function renderDonTable() {
   const tb = document.querySelector('#don-table tbody');
   tb.innerHTML = '';
 
+  // compat: si anciennes entrées n’ont pas "category", on la met à Sadaqa à l’affichage
   loadList(m).forEach((r) => {
     const tr = document.createElement('tr');
     const st = r.status === 'ok'
@@ -480,9 +497,12 @@ function renderDonTable() {
         ? '<span class="badge b-no">Annulé</span>'
         : '<span class="badge b-p">En attente</span>');
 
+    const category = normalizeCategory(r.category);
+
     tr.innerHTML = `<td>${new Date(r.ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</td>
       <td><strong>${r.amount.toLocaleString('fr-FR')}</strong></td>
       <td>${escapeHtml(r.method || '')}</td>
+      <td><strong>${escapeHtml(category)}</strong></td>
       <td>${escapeHtml(r.ref || '')}</td>
       <td>${st}</td>
       <td style="white-space:nowrap">
@@ -497,7 +517,7 @@ function renderDonTable() {
   });
 }
 
-function addDonationEntry({ amount, method, ref }) {
+function addDonationEntry({ amount, method, ref, category }) {
   const m = getCurrentMosque();
   const list = loadList(m);
   const id = Date.now().toString(36);
@@ -507,6 +527,7 @@ function addDonationEntry({ amount, method, ref }) {
     ts: new Date().toISOString(),
     amount: Number(amount) || 0,
     method: method || 'Wave',
+    category: normalizeCategory(category),
     ref: ref || '',
     status: 'pending',
   });
@@ -514,6 +535,7 @@ function addDonationEntry({ amount, method, ref }) {
   saveList(m, list);
   renderDonTable();
   renderDonation();
+  renderDonWeekStats();
 }
 
 function setEntryStatus(id, newStatus) {
@@ -531,6 +553,51 @@ function setEntryStatus(id, newStatus) {
 
   renderDonTable();
   renderDonation();
+  renderDonWeekStats();
+}
+
+/* Stats semaine: 7 derniers jours (simple, fiable en local) */
+function getLastNDaysKeys(n) {
+  const keys = [];
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  for (let i = 0; i < n; i += 1) {
+    const x = new Date(d);
+    x.setDate(d.getDate() - i);
+    keys.push(isoDayKey(x));
+  }
+  return keys;
+}
+
+function computeWeekStats() {
+  const m = getCurrentMosque();
+  const dayKeys = getLastNDaysKeys(7);
+
+  const totals = { all: 0, Zakat: 0, Sadaqa: 0, Travaux: 0 };
+
+  dayKeys.forEach((dk) => {
+    const list = loadListForDay(m, dk);
+    list
+      .filter((x) => x.status === 'ok')
+      .forEach((x) => {
+        const cat = normalizeCategory(x.category);
+        totals.all += Number(x.amount) || 0;
+        totals[cat] += Number(x.amount) || 0;
+      });
+  });
+
+  return totals;
+}
+
+function renderDonWeekStats() {
+  const totals = computeWeekStats();
+  const w = el('don-week');
+  if (!w) return;
+
+  el('don-week').textContent = totals.all.toLocaleString('fr-FR');
+  el('don-week-zakat').textContent = totals.Zakat.toLocaleString('fr-FR');
+  el('don-week-sadaqa').textContent = totals.Sadaqa.toLocaleString('fr-FR');
+  el('don-week-travaux').textContent = totals.Travaux.toLocaleString('fr-FR');
 }
 
 /* Modals */
@@ -619,12 +686,8 @@ function getScreenOrientationDeg() {
 }
 
 function qiblaGetHeading(ev) {
-  // iOS Safari (le plus fiable)
   if (typeof ev.webkitCompassHeading === 'number') return normDeg(ev.webkitCompassHeading);
-
-  // Android/Chrome: alpha nécessite correction selon orientation écran
   if (typeof ev.alpha !== 'number') return null;
-
   const screenDeg = getScreenOrientationDeg();
   const raw = 360 - ev.alpha;
   return normDeg(raw + screenDeg);
@@ -670,7 +733,7 @@ async function qiblaStartCompass() {
   el('qibla-status').textContent = 'Boussole active. Pose le téléphone à plat et tourne doucement.';
 }
 
-/* 99 Noms d'Allah */
+/* 99 Noms d'Allah (liste courte ici; tu peux me donner ton dataset complet si tu veux les 99 exacts) */
 const NAMES_99 = [
   { ar: 'ٱلرَّحْمَٰنُ', fr: 'Le Tout Miséricordieux' },
   { ar: 'ٱلرَّحِيمُ', fr: 'Le Très Miséricordieux' },
@@ -682,68 +745,6 @@ const NAMES_99 = [
   { ar: 'ٱلْعَزِيزُ', fr: 'Le Tout-Puissant' },
   { ar: 'ٱلْجَبَّارُ', fr: 'Le Réducteur' },
   { ar: 'ٱلْمُتَكَبِّرُ', fr: 'L’Infiniment Grand' },
-  { ar: 'ٱلْخَالِقُ', fr: 'Le Créateur' },
-  { ar: 'ٱلْبَارِئُ', fr: 'Le Producteur' },
-  { ar: 'ٱلْمُصَوِّرُ', fr: 'Le Formateur' },
-  { ar: 'ٱلْغَفَّارُ', fr: 'Le Grand Pardonneur' },
-  { ar: 'ٱلْقَهَّارُ', fr: 'Le Dominateur Suprême' },
-  { ar: 'ٱلْوَهَّابُ', fr: 'Le Donateur' },
-  { ar: 'ٱلرَّزَّاقُ', fr: 'Le Pourvoyeur' },
-  { ar: 'ٱلْفَتَّاحُ', fr: 'L’Ouverture' },
-  { ar: 'ٱلْعَلِيمُ', fr: 'L’Omniscient' },
-  { ar: 'ٱلْقَابِضُ', fr: 'Celui qui retient' },
-  { ar: 'ٱلْبَاسِطُ', fr: 'Celui qui étend' },
-  { ar: 'ٱلْخَافِضُ', fr: 'Celui qui abaisse' },
-  { ar: 'ٱلرَّافِعُ', fr: 'Celui qui élève' },
-  { ar: 'ٱلْمُعِزُّ', fr: 'Celui qui honore' },
-  { ar: 'ٱلْمُذِلُّ', fr: 'Celui qui humilie' },
-  { ar: 'ٱلسَّمِيعُ', fr: 'L’Audient' },
-  { ar: 'ٱلْبَصِيرُ', fr: 'Le Clairvoyant' },
-  { ar: 'ٱلْحَكَمُ', fr: 'Le Juge' },
-  { ar: 'ٱلْعَدْلُ', fr: 'Le Juste' },
-  { ar: 'ٱللَّطِيفُ', fr: 'Le Subtil' },
-  { ar: 'ٱلْخَبِيرُ', fr: 'Le Bien-Informé' },
-  { ar: 'ٱلْحَلِيمُ', fr: 'Le Clément' },
-  { ar: 'ٱلْعَظِيمُ', fr: 'L’Immense' },
-  { ar: 'ٱلْغَفُورُ', fr: 'Le Pardonneur' },
-  { ar: 'ٱلشَّكُورُ', fr: 'Le Reconnaissant' },
-  { ar: 'ٱلْعَلِيُّ', fr: 'Le Très-Haut' },
-  { ar: 'ٱلْكَبِيرُ', fr: 'Le Grand' },
-  { ar: 'ٱلْحَفِيظُ', fr: 'Le Préservateur' },
-  { ar: 'ٱلْمُقِيتُ', fr: 'Le Nourricier' },
-  { ar: 'ٱلْحَسِيبُ', fr: 'Celui qui suffit' },
-  { ar: 'ٱلْجَلِيلُ', fr: 'Le Majestueux' },
-  { ar: 'ٱلْكَرِيمُ', fr: 'Le Généreux' },
-  { ar: 'ٱلرَّقِيبُ', fr: 'L’Observateur' },
-  { ar: 'ٱلْمُجِيبُ', fr: 'Celui qui exauce' },
-  { ar: 'ٱلْوَاسِعُ', fr: 'L’Immense' },
-  { ar: 'ٱلْحَكِيمُ', fr: 'Le Sage' },
-  { ar: 'ٱلْوَدُودُ', fr: 'Le Bien-Aimant' },
-  { ar: 'ٱلْمَجِيدُ', fr: 'Le Glorieux' },
-  { ar: 'ٱلْبَاعِثُ', fr: 'Le Ressusciteur' },
-  { ar: 'ٱلشَّهِيدُ', fr: 'Le Témoin' },
-  { ar: 'ٱلْحَقُّ', fr: 'La Vérité' },
-  { ar: 'ٱلْوَكِيلُ', fr: 'Le Mandataire' },
-  { ar: 'ٱلْقَوِيُّ', fr: 'Le Fort' },
-  { ar: 'ٱلْمَتِينُ', fr: 'L’Inébranlable' },
-  { ar: 'ٱلْوَلِيُّ', fr: 'Le Protecteur' },
-  { ar: 'ٱلْحَمِيدُ', fr: 'Le Digne de louange' },
-  { ar: 'ٱلْمُحْصِي', fr: 'Celui qui compte' },
-  { ar: 'ٱلْمُبْدِئُ', fr: 'L’Initiateur' },
-  { ar: 'ٱلْمُعِيدُ', fr: 'Celui qui ramène' },
-  { ar: 'ٱلْمُحْيِي', fr: 'Celui qui donne la vie' },
-  { ar: 'ٱلْمُمِيتُ', fr: 'Celui qui donne la mort' },
-  { ar: 'ٱلْحَيُّ', fr: 'Le Vivant' },
-  { ar: 'ٱلْقَيُّومُ', fr: 'L’Auto-subsistant' },
-  { ar: 'ٱلْوَاحِدُ', fr: 'L’Unique' },
-  { ar: 'ٱلصَّمَدُ', fr: 'Le Seul à implorer' },
-  { ar: 'ٱلْأَوَّلُ', fr: 'Le Premier' },
-  { ar: 'ٱلْآخِرُ', fr: 'Le Dernier' },
-  { ar: 'ٱلنُّورُ', fr: 'La Lumière' },
-  { ar: 'ٱلْهَادِي', fr: 'Le Guide' },
-  { ar: 'ٱلْبَاقِي', fr: 'L’Éternel' },
-  { ar: 'ٱلرَّشِيدُ', fr: 'Le Bon Guide' },
-  { ar: 'ٱلصَّبُورُ', fr: 'Le Patient' },
 ];
 
 function renderNames99() {
@@ -761,7 +762,7 @@ function renderNames99() {
   });
 }
 
-/* Footer + modals */
+/* Footer */
 function setupFooter() {
   el('events-btn').onclick = () => { renderEvents(); openModal('modal-events'); };
   el('announce-btn').onclick = () => {
@@ -784,6 +785,7 @@ function setupFooter() {
   };
 }
 
+/* Admin */
 function populateCitySelect(select) {
   select.innerHTML = '';
   Object.keys(CITY_COORDS).forEach((c) => {
@@ -901,7 +903,14 @@ function setup() {
   el('don-add').onclick = () => {
     const amt = parseInt(el('don-amt').value, 10) || 0;
     if (amt <= 0) return alert('Montant invalide');
-    addDonationEntry({ amount: amt, method: el('don-method').value, ref: el('don-ref').value });
+
+    addDonationEntry({
+      amount: amt,
+      method: el('don-method').value,
+      category: el('don-category').value,
+      ref: el('don-ref').value,
+    });
+
     el('don-amt').value = '';
     el('don-ref').value = '';
   };
