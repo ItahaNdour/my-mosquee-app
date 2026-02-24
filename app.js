@@ -40,6 +40,12 @@ const KAABA = { lat: 21.4225, lon: 39.8262 };
 
 const DON_CATEGORIES = ['Zakat', 'Sadaqa', 'Travaux'];
 
+const DON_CATEGORY_HELP = {
+  Zakat: 'Zakat : obligation (selon conditions).',
+  Sadaqa: 'Sadaqa : don libre, pour l’entraide.',
+  Travaux: 'Travaux : entretien, rénovation, équipement.',
+};
+
 const el = (id) => document.getElementById(id);
 
 let timingsData = null;
@@ -366,6 +372,24 @@ async function fetchTimings() {
   }
 }
 
+function normalizeCategory(cat) {
+  const c = String(cat || '').trim();
+  if (c === 'Travaux / Entretien') return 'Travaux';
+  return DON_CATEGORIES.includes(c) ? c : 'Sadaqa';
+}
+
+function getPublicCategory() {
+  const sel = el('don-public-category');
+  if (!sel) return 'Sadaqa';
+  return normalizeCategory(sel.value);
+}
+
+function updatePublicCategoryHelp() {
+  const cat = getPublicCategory();
+  const help = el('don-public-category-help');
+  if (help) help.textContent = DON_CATEGORY_HELP[cat] || '—';
+}
+
 function displayAll(data) {
   timingsData = (data && data.timings) ? data.timings : MOCK;
   const m = getCurrentMosque();
@@ -397,6 +421,8 @@ function displayAll(data) {
   const seenKey = `annSeen_${m.id}_${todayKey()}`;
   el('notif').style.display = (ann && !localStorage.getItem(seenKey)) ? 'inline-block' : 'none';
 
+  updatePublicCategoryHelp();
+
   updateNextCountdown();
   renderDonation();
   renderDonTable();
@@ -412,9 +438,13 @@ function openWhatsApp(to, msg) {
 }
 
 function setupDonButtons() {
+  el('don-public-category').onchange = () => updatePublicCategoryHelp();
+
   el('btn-wave').onclick = () => {
     const m = getCurrentMosque();
+    const cat = getPublicCategory();
     openWhatsApp(m.phone || '', `Salam, je souhaite faire un don via *Wave Money*.
+Catégorie : *${cat}*
 Montant : [à renseigner] CFA
 Numéro Wave : ${m.wave}
 Mosquée : ${m.name}
@@ -423,7 +453,9 @@ BarakAllahou fik.`);
 
   el('btn-orange').onclick = () => {
     const m = getCurrentMosque();
+    const cat = getPublicCategory();
     openWhatsApp(m.phone || '', `Salam, je souhaite faire un don via *Orange Money*.
+Catégorie : *${cat}*
 Montant : [à renseigner] CFA
 Numéro Orange : ${m.orange}
 Mosquée : ${m.name}
@@ -432,8 +464,9 @@ BarakAllahou fik.`);
 
   el('btn-claimed').onclick = () => {
     const m = getCurrentMosque();
+    const cat = getPublicCategory();
     openWhatsApp(m.phone || '', `Salam, *j’ai donné* [montant] CFA via [Wave/Orange/Espèces].
-Catégorie : [Zakat/Sadaqa/Travaux]
+Catégorie : *${cat}*
 Référence : [collez le reçu]
 Mosquée : ${m.name}`);
   };
@@ -455,11 +488,6 @@ function saveList(m, list) { localStorage.setItem(kList(m), JSON.stringify(list)
 
 function monthSum(m) { return parseInt(localStorage.getItem(kMonthSum(m)) || '0', 10); }
 function setMonthSum(m, v) { localStorage.setItem(kMonthSum(m), String(Math.max(0, parseInt(v, 10) || 0))); }
-
-function normalizeCategory(cat) {
-  const c = String(cat || '').trim();
-  return DON_CATEGORIES.includes(c) ? c : 'Sadaqa';
-}
 
 function confirmedSumToday() {
   const m = getCurrentMosque();
@@ -488,7 +516,6 @@ function renderDonTable() {
   const tb = document.querySelector('#don-table tbody');
   tb.innerHTML = '';
 
-  // compat: si anciennes entrées n’ont pas "category", on la met à Sadaqa à l’affichage
   loadList(m).forEach((r) => {
     const tr = document.createElement('tr');
     const st = r.status === 'ok'
@@ -556,7 +583,7 @@ function setEntryStatus(id, newStatus) {
   renderDonWeekStats();
 }
 
-/* Stats semaine: 7 derniers jours (simple, fiable en local) */
+/* Stats semaine: 7 derniers jours */
 function getLastNDaysKeys(n) {
   const keys = [];
   const d = new Date();
@@ -733,7 +760,7 @@ async function qiblaStartCompass() {
   el('qibla-status').textContent = 'Boussole active. Pose le téléphone à plat et tourne doucement.';
 }
 
-/* 99 Noms d'Allah (liste courte ici; tu peux me donner ton dataset complet si tu veux les 99 exacts) */
+/* 99 Noms (mini placeholder; si tu veux la liste complète des 99, colle-la moi) */
 const NAMES_99 = [
   { ar: 'ٱلرَّحْمَٰنُ', fr: 'Le Tout Miséricordieux' },
   { ar: 'ٱلرَّحِيمُ', fr: 'Le Très Miséricordieux' },
