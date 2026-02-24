@@ -116,7 +116,14 @@
       <div>Reste : <span id="don-left">0</span> CFA</div>
     </div>
 
-    <!-- UX dons -->
+    <!-- Stats semaine -->
+    <div class="kpis kpis-week">
+      <div><i class="fa-solid fa-calendar-week"></i> Total semaine : <span id="don-week">0</span> CFA</div>
+      <div>Zakat : <span id="don-week-zakat">0</span></div>
+      <div>Sadaqa : <span id="don-week-sadaqa">0</span></div>
+      <div>Travaux : <span id="don-week-travaux">0</span></div>
+    </div>
+
     <div class="quick-amounts" aria-label="Montants rapides">
       <button class="chip" data-amt="1000">+1 000</button>
       <button class="chip" data-amt="2000">+2 000</button>
@@ -127,12 +134,17 @@
     <div class="add-don">
       <input id="don-amt" type="number" placeholder="Montant (CFA)"/>
       <select id="don-method"><option>Wave</option><option>Orange</option><option>Espèces</option></select>
+      <select id="don-category" title="Catégorie">
+        <option>Zakat</option>
+        <option>Sadaqa</option>
+        <option>Travaux</option>
+      </select>
       <input id="don-ref" placeholder="Réf./Remarque"/>
       <button class="btn btn-primary" id="don-add">Ajouter</button>
     </div>
 
     <table class="table" id="don-table">
-      <thead><tr><th>Heure</th><th>Montant</th><th>Mode</th><th>Réf.</th><th>Statut</th><th></th></tr></thead>
+      <thead><tr><th>Heure</th><th>Montant</th><th>Mode</th><th>Cat.</th><th>Réf.</th><th>Statut</th><th></th></tr></thead>
       <tbody></tbody>
     </table>
   </section>
