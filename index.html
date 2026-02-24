@@ -10,7 +10,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 
-  <!-- IMPORTANT GitHub Pages repo: chemin RELATIF -->
   <link rel="stylesheet" href="styles.css?v=1"/>
 </head>
 
@@ -38,7 +37,7 @@
   </div>
 
   <!-- Ramadan -->
-  <section class="card duo" id="ramadan-card" style="margin-top:12px; padding:14px; display:none">
+  <section class="card duo ramadan-card" id="ramadan-card" style="margin-top:12px; padding:14px; display:none">
     <div class="ramadan-head">
       <div class="ramadan-left">
         <div class="ramadan-title">🌙 Ramadan</div>
@@ -50,7 +49,6 @@
       </div>
     </div>
 
-    <!-- NOUVEAU: durée du jeûne (court) -->
     <div class="ramadan-duration small" id="ramadan-duration">—</div>
 
     <div class="duo-grid" style="margin-top:12px">
@@ -93,6 +91,7 @@
     <ul class="don-lines">
       <li><span><i class="fa-solid fa-wallet" style="color:#0ea5e9"></i> Wave Money</span><strong id="wave-number">—</strong></li>
       <li><span><i class="fa-solid fa-mobile-screen-button" style="color:#f97316"></i> Orange Money</span><strong id="orange-number">—</strong></li>
+      <li><span><i class="fa-solid fa-hand-holding-heart" style="color:#16a34a"></i> Espèces (sur place)</span><strong id="cash-info">Mosquée</strong></li>
     </ul>
 
     <div class="don-cta">
@@ -115,6 +114,14 @@
     <div class="kpis">
       <div>Total mois : <span id="don-month">0</span> CFA</div>
       <div>Reste : <span id="don-left">0</span> CFA</div>
+    </div>
+
+    <!-- UX dons -->
+    <div class="quick-amounts" aria-label="Montants rapides">
+      <button class="chip" data-amt="1000">+1 000</button>
+      <button class="chip" data-amt="2000">+2 000</button>
+      <button class="chip" data-amt="5000">+5 000</button>
+      <button class="chip" data-amt="10000">+10 000</button>
     </div>
 
     <div class="add-don">
@@ -140,13 +147,25 @@
 
     <div class="qibla-wrap">
       <div class="qibla-dial" aria-label="Boussole Qibla">
-        <div class="qibla-needle" id="qibla-needle"><div class="qibla-arrow"></div></div>
+        <div class="qibla-mark q-n">N</div>
+        <div class="qibla-mark q-e">E</div>
+        <div class="qibla-mark q-s">S</div>
+        <div class="qibla-mark q-w">W</div>
+
+        <div class="qibla-needle" id="qibla-needle">
+          <div class="qibla-arrow"></div>
+        </div>
         <div class="qibla-center"></div>
       </div>
 
       <div class="qibla-info">
         <div class="qibla-line"><span class="small">Direction Qibla</span><strong id="qibla-bearing">—°</strong></div>
         <div class="qibla-line"><span class="small">Cap</span><strong id="qibla-heading">—°</strong></div>
+
+        <div class="qibla-help" id="qibla-help">
+          Place ton téléphone à plat et bouge-le doucement jusqu’à stabilisation.
+        </div>
+
         <div class="small" id="qibla-status">Appuie sur “Activer” (permission cap + localisation).</div>
 
         <button class="btn btn-ghost" id="qibla-maps">
@@ -239,7 +258,6 @@
   </div>
 </div>
 
-<!-- IMPORTANT: JS séparé -->
 <script src="app.js?v=1"></script>
 </body>
 </html>
