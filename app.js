@@ -33,8 +33,6 @@ const DEFAULT_MOSQUES = [
 
 const MOCK = { Fajr: '05:45', Sunrise: '07:00', Dhuhr: '13:30', Asr: '16:45', Maghrib: '19:05', Isha: '20:30' };
 
-// ⚠️ Tu m’as dit : Ramadan a commencé le 18 février
-// Mets l’année correcte ici si besoin (ex: 2026-02-18).
 const RAMADAN_START_DATE = '2026-02-18';
 const RAMADAN_TOTAL_DAYS = 30;
 
@@ -191,7 +189,6 @@ function renderRamadan() {
 
   const left = RAMADAN_TOTAL_DAYS - dayIndex;
 
-  // Texte COURT (plus de "Début... Aujourd’hui...")
   const sub = `${dayIndex} Ramadan • ${WEEKDAYS[now.getDay()]} ${now.getDate()} ${MONTHS[now.getMonth()]}`;
   el('ramadan-sub').textContent = sub;
 
@@ -373,6 +370,8 @@ function displayAll(data) {
   el('mosque-name').textContent = m.name;
   el('wave-number').textContent = m.wave || '—';
   el('orange-number').textContent = m.orange || '—';
+  el('cash-info').textContent = m.name || 'Mosquée';
+
   el('about-contact-name').textContent = m.contact || '—';
   el('about-contact-phone').textContent = m.phone || '—';
 
@@ -429,7 +428,7 @@ BarakAllahou fik.`);
 
   el('btn-claimed').onclick = () => {
     const m = getCurrentMosque();
-    openWhatsApp(m.phone || '', `Salam, *j’ai donné* [montant] CFA via [Wave/Orange].
+    openWhatsApp(m.phone || '', `Salam, *j’ai donné* [montant] CFA via [Wave/Orange/Espèces].
 Référence : [collez le reçu]
 Mosquée : ${m.name}`);
   };
@@ -612,10 +611,23 @@ async function qiblaRequestGeo() {
   });
 }
 
+function getScreenOrientationDeg() {
+  const o = screen.orientation && typeof screen.orientation.angle === 'number'
+    ? screen.orientation.angle
+    : (typeof window.orientation === 'number' ? window.orientation : 0);
+  return normDeg(o || 0);
+}
+
 function qiblaGetHeading(ev) {
-  if (typeof ev.webkitCompassHeading === 'number') return ev.webkitCompassHeading;
-  if (typeof ev.alpha === 'number') return 360 - ev.alpha;
-  return null;
+  // iOS Safari (le plus fiable)
+  if (typeof ev.webkitCompassHeading === 'number') return normDeg(ev.webkitCompassHeading);
+
+  // Android/Chrome: alpha nécessite correction selon orientation écran
+  if (typeof ev.alpha !== 'number') return null;
+
+  const screenDeg = getScreenOrientationDeg();
+  const raw = 360 - ev.alpha;
+  return normDeg(raw + screenDeg);
 }
 
 function qiblaOnOrientation(ev) {
@@ -627,6 +639,8 @@ function qiblaOnOrientation(ev) {
 
 async function qiblaStartCompass() {
   if (qiblaWatchActive) return;
+
+  el('qibla-help').style.display = 'block';
 
   qiblaSetFallbackFromMosque();
   await qiblaRequestGeo();
@@ -653,10 +667,10 @@ async function qiblaStartCompass() {
 
   window.addEventListener('deviceorientation', qiblaOnOrientation, { passive: true });
   qiblaWatchActive = true;
-  el('qibla-status').textContent = 'Boussole active. Tourne doucement pour stabiliser.';
+  el('qibla-status').textContent = 'Boussole active. Pose le téléphone à plat et tourne doucement.';
 }
 
-/* 99 Noms d'Allah (restauré) */
+/* 99 Noms d'Allah */
 const NAMES_99 = [
   { ar: 'ٱلرَّحْمَٰنُ', fr: 'Le Tout Miséricordieux' },
   { ar: 'ٱلرَّحِيمُ', fr: 'Le Très Miséricordieux' },
@@ -721,39 +735,13 @@ const NAMES_99 = [
   { ar: 'ٱلْمُمِيتُ', fr: 'Celui qui donne la mort' },
   { ar: 'ٱلْحَيُّ', fr: 'Le Vivant' },
   { ar: 'ٱلْقَيُّومُ', fr: 'L’Auto-subsistant' },
-  { ar: 'ٱلْوَاجِدُ', fr: 'Le Noble' },
-  { ar: 'ٱلْمَاجِدُ', fr: 'Le Très Glorieux' },
   { ar: 'ٱلْوَاحِدُ', fr: 'L’Unique' },
   { ar: 'ٱلصَّمَدُ', fr: 'Le Seul à implorer' },
-  { ar: 'ٱلْقَادِرُ', fr: 'Le Tout-Puissant' },
-  { ar: 'ٱلْمُقْتَدِرُ', fr: 'Le Très Puissant' },
-  { ar: 'ٱلْمُقَدِّمُ', fr: 'Celui qui avance' },
-  { ar: 'ٱلْمُؤَخِّرُ', fr: 'Celui qui retarde' },
   { ar: 'ٱلْأَوَّلُ', fr: 'Le Premier' },
   { ar: 'ٱلْآخِرُ', fr: 'Le Dernier' },
-  { ar: 'ٱلظَّاهِرُ', fr: 'L’Apparent' },
-  { ar: 'ٱلْبَاطِنُ', fr: 'Le Caché' },
-  { ar: 'ٱلْوَالِي', fr: 'Le Maître' },
-  { ar: 'ٱلْمُتَعَالِي', fr: 'Le Très Élevé' },
-  { ar: 'ٱلْبَرُّ', fr: 'Le Bienfaisant' },
-  { ar: 'ٱلتَّوَّابُ', fr: 'Celui qui accepte le repentir' },
-  { ar: 'ٱلْمُنْتَقِمُ', fr: 'Le Vengeur' },
-  { ar: 'ٱلْعَفُوُّ', fr: 'Le Pardonneur' },
-  { ar: 'ٱلرَّؤُوفُ', fr: 'Le Compatissant' },
-  { ar: 'مَٰلِكُ ٱلْمُلْكِ', fr: 'Le Possesseur du Royaume' },
-  { ar: 'ذُو ٱلْجَلَالِ وَٱلْإِكْرَامِ', fr: 'Majesté et Générosité' },
-  { ar: 'ٱلْمُقْسِطُ', fr: 'L’Équitable' },
-  { ar: 'ٱلْجَامِعُ', fr: 'Le Rassembleur' },
-  { ar: 'ٱلْغَنِيُّ', fr: 'Le Riche' },
-  { ar: 'ٱلْمُغْنِي', fr: 'Celui qui enrichit' },
-  { ar: 'ٱلْمَانِعُ', fr: 'Celui qui empêche' },
-  { ar: 'ٱلضَّارُّ', fr: 'Celui qui nuit' },
-  { ar: 'ٱلنَّافِعُ', fr: 'Celui qui profite' },
   { ar: 'ٱلنُّورُ', fr: 'La Lumière' },
   { ar: 'ٱلْهَادِي', fr: 'Le Guide' },
-  { ar: 'ٱلْبَدِيعُ', fr: 'L’Incomparable' },
   { ar: 'ٱلْبَاقِي', fr: 'L’Éternel' },
-  { ar: 'ٱلْوَارِثُ', fr: 'L’Héritier' },
   { ar: 'ٱلرَّشِيدُ', fr: 'Le Bon Guide' },
   { ar: 'ٱلصَّبُورُ', fr: 'Le Patient' },
 ];
@@ -889,6 +877,18 @@ function setupAdmin() {
   };
 }
 
+function setupQuickAmounts() {
+  document.querySelectorAll('.chip[data-amt]').forEach((b) => {
+    b.onclick = () => {
+      const amt = parseInt(b.dataset.amt, 10) || 0;
+      const input = el('don-amt');
+      const cur = parseInt(input.value || '0', 10) || 0;
+      input.value = String(cur + amt);
+      input.focus();
+    };
+  });
+}
+
 /* Init */
 function setup() {
   bindModals();
@@ -896,6 +896,7 @@ function setup() {
   setupFooter();
   setupDonButtons();
   setupAdmin();
+  setupQuickAmounts();
 
   el('don-add').onclick = () => {
     const amt = parseInt(el('don-amt').value, 10) || 0;
