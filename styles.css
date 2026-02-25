@@ -1,345 +1,335 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>MyMosque</title>
+:root{
+  --sand:#f7f3ed; --sand-2:#efe8de; --ink:#0f172a; --muted:#667085;
+  --green:#2f7d6d; --green-2:#3f8f7e; --mint:#e7f3f0; --accent:#e4572e;
+  --card:#ffffff; --shadow:0 10px 24px rgba(0,0,0,.08); --radius:16px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:Poppins,system-ui,Segoe UI,Roboto; color:var(--ink);
+  background:linear-gradient(180deg,var(--sand),var(--sand-2));
+  min-height:100vh;
+  display:flex; flex-direction:column; align-items:center;
+  padding:10px 12px 84px;
+}
+.card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow)}
+.header, .main{width:100%; max-width:520px}
 
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+.small{font-size:12px; color:var(--muted)}
+.dot{color:rgba(102,112,133,.6); padding:0 6px}
 
-  <link rel="stylesheet" href="styles.css?v=7"/>
-</head>
+.header{
+  padding:12px;
+  text-align:center;
+  position:relative;
+}
+.icon-btn{
+  position:absolute; top:10px; right:10px;
+  width:40px; height:40px; border:none; border-radius:12px;
+  background:var(--green); color:#fff; display:grid; place-items:center; cursor:pointer
+}
+.title{margin:2px 0 2px; font-size:22px; color:var(--green); font-weight:900}
 
-<body>
-<header class="card header">
-  <button id="admin-button" class="icon-btn" title="Administration" aria-label="Administration">
-    <i class="fa-solid fa-user-shield"></i>
-  </button>
+.dates-inline{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:0;
+  margin-top:2px;
+}
 
-  <h1 id="mosque-name" class="title">Mosquée</h1>
+.top-row{
+  margin-top:10px;
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+}
 
-  <div class="dates-inline">
-    <div class="small" id="hijri-date">—</div>
-    <span class="dot">•</span>
-    <div class="small" id="gregorian-date">—</div>
-  </div>
+.clock{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  background:var(--green);
+  color:#fff;
+  padding:10px 12px;
+  border-radius:14px;
+}
+#current-time{font-size:24px; font-weight:900; letter-spacing:0.4px}
 
-  <div class="top-row">
-    <div class="clock">
-      <i class="fa-regular fa-clock"></i>
-      <span id="current-time">--:--:--</span>
-    </div>
+.next{
+  background:var(--mint);
+  border-radius:14px;
+  padding:10px 12px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+.next-name{color:var(--green-2); font-weight:900; font-size:13px}
+.next-timer{color:var(--accent); font-weight:900; font-size:13px}
 
-    <div class="next" aria-live="polite">
-      <span class="next-name" id="next-prayer-name">Chargement...</span>
-      <span class="next-timer" id="countdown">--:--:--</span>
-    </div>
-  </div>
+/* Ramadan compact */
+.ramadan{
+  margin-top:10px;
+  padding:12px;
+  background:linear-gradient(180deg,#2f7d6d,#266a5c);
+  color:#fff;
+}
+.ramadan .small{color:rgba(255,255,255,.82)}
+.ramadan-top{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:flex-start;
+}
+.ramadan-title{font-weight:900; font-size:15px}
+.ramadan-day{font-weight:900; font-size:18px}
+.ramadan-minirow{
+  margin-top:10px;
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:8px;
+}
+.ramadan-chip{
+  border-radius:14px;
+  padding:10px 10px;
+  background:rgba(255,255,255,.10);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);
+  display:grid;
+  gap:2px;
+  text-align:left;
+}
+.ramadan-chip strong{font-weight:900; font-size:16px; color:#fff}
+@media (max-width:360px){
+  .ramadan-minirow{grid-template-columns:1fr; }
+  .ramadan-chip{ text-align:center; }
+}
 
-  <!-- Ramadan -->
-  <section class="card ramadan" id="ramadan-card" style="display:none">
-    <div class="ramadan-top">
-      <div class="ramadan-left">
-        <div class="ramadan-title">🌙 Ramadan</div>
-        <div class="small" id="ramadan-sub">—</div>
-      </div>
-      <div class="ramadan-right">
-        <div class="ramadan-day" id="ramadan-day">—</div>
-        <div class="small" id="ramadan-left">—</div>
-      </div>
-    </div>
+/* Main layout */
+.main{margin-top:10px; display:grid; gap:10px}
 
-    <div class="ramadan-minirow">
-      <div class="ramadan-chip">
-        <span class="small">Durée</span>
-        <strong id="ramadan-duration">—</strong>
-      </div>
-      <div class="ramadan-chip">
-        <span class="small">Suhoor</span>
-        <strong id="ramadan-suhoor">--:--</strong>
-      </div>
-      <div class="ramadan-chip">
-        <span class="small">Iftar</span>
-        <strong id="ramadan-iftar">--:--</strong>
-      </div>
-    </div>
-  </section>
-</header>
+/* Prayer list */
+.list .row{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:12px 14px;
+  border-bottom:1px solid #f0f2f6;
+}
+.list .row:last-child{border-bottom:none}
+.row.current{background:#eef7f4; border-left:5px solid var(--green)}
+.name{font-weight:800; font-size:14px}
+.time{font-weight:900; color:var(--green); font-size:14px}
 
-<main class="main">
-  <section class="card list" aria-label="Horaires de prière">
-    <div class="row" id="fajr-item"><span class="name" id="fajr-name">Souba (Fajr)</span><span class="time" id="fajr-time">--:--</span></div>
-    <div class="row" id="dhuhr-item"><span class="name" id="dhuhr-name">Tisbar (Dhuhr)</span><span class="time" id="dhuhr-time">--:--</span></div>
-    <div class="row" id="asr-item"><span class="name" id="asr-name">Takusan (Asr)</span><span class="time" id="asr-time">--:--</span></div>
-    <div class="row" id="maghrib-item"><span class="name" id="maghrib-name">Timis (Maghrib)</span><span class="time" id="maghrib-time">--:--</span></div>
-    <div class="row" id="isha-item"><span class="name" id="isha-name">Guéwé (Isha)</span><span class="time" id="isha-time">--:--</span></div>
-  </section>
+/* Duo */
+.duo{padding:12px}
+.duo-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.duo-item{background:#f4faf8; border-radius:14px; padding:10px; text-align:center; box-shadow:inset 0 0 0 1px #e3f0eb}
+.duo-title{font-weight:900; color:#1f5e53; font-size:13px}
+.duo-time{font-weight:900; font-size:18px; margin-top:6px; color:#134e42}
+@media (max-width:360px){ .duo-grid{grid-template-columns:1fr} }
 
-  <section class="card duo">
-    <div class="duo-grid">
-      <div class="duo-item">
-        <div class="duo-title">Jumua</div>
-        <div class="duo-time" id="jumua-time">13:30</div>
-      </div>
-      <div class="duo-item">
-        <div class="duo-title">Chourouk</div>
-        <div class="duo-time" id="shuruq-time">--:--</div>
-      </div>
-    </div>
-  </section>
+/* Don public mobile-first */
+.don-public{padding:12px}
+.section-title{display:flex; align-items:baseline; justify-content:space-between; gap:10px}
+.section-title h3{margin:0; color:#1f5e53; font-size:16px}
 
-  <section class="card don-public">
-    <div class="section-title">
-      <h3>💰 Faire un don</h3>
-      <span class="small">Choisis ta cause</span>
-    </div>
+.don-category{
+  margin-top:10px;
+  background:#f8fffd;
+  border:1px dashed #bfe4db;
+  border-radius:14px;
+  padding:10px;
+  text-align:left;
+}
+.don-category-label{
+  font-weight:900; color:#1f5e53;
+  display:flex; align-items:center; gap:8px;
+}
+.don-category-row{
+  margin-top:8px;
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+}
+#don-public-category{
+  padding:10px;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  font-weight:900;
+  width:100%;
+}
+.don-category-help{opacity:.95}
 
-    <div class="don-category">
-      <div class="don-category-label">
-        <i class="fa-solid fa-tags"></i> Catégorie
-      </div>
-      <div class="don-category-row">
-        <select id="don-public-category" title="Catégorie du don">
-          <option value="Zakat">Zakat</option>
-          <option value="Sadaqa" selected>Sadaqa</option>
-          <option value="Travaux">Travaux / Entretien</option>
-        </select>
-        <div class="don-category-help small" id="don-public-category-help">—</div>
-      </div>
-    </div>
+.don-lines{list-style:none; padding:0; margin:10px 0 0}
+.don-lines li{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:8px 0; border-top:1px solid #eef2f7; font-weight:800;
+}
+.don-lines li:first-child{border-top:none}
 
-    <ul class="don-lines">
-      <li><span><i class="fa-solid fa-wallet" style="color:#0ea5e9"></i> Wave</span><strong id="wave-number">—</strong></li>
-      <li><span><i class="fa-solid fa-mobile-screen-button" style="color:#f97316"></i> Orange</span><strong id="orange-number">—</strong></li>
-      <li><span><i class="fa-solid fa-hand-holding-heart" style="color:#16a34a"></i> Espèces</span><strong id="cash-info">Mosquée</strong></li>
-    </ul>
+.btn{
+  border:none;
+  border-radius:12px;
+  cursor:pointer;
+  font-weight:900;
+  padding:11px 12px;
+  min-width:110px;
+}
+.btn-primary{background:var(--green); color:#fff}
+.btn-ghost{background:#fff; color:var(--green); border:1px solid #cfe7e1}
 
-    <div class="don-cta-grid">
-      <button class="btn btn-primary" id="btn-wave"><i class="fa-solid fa-hand-holding-dollar"></i> Wave</button>
-      <button class="btn btn-primary" id="btn-orange"><i class="fa-solid fa-hand-holding-dollar"></i> Orange</button>
-      <button class="btn btn-ghost btn-wide" id="btn-claimed"><i class="fa-brands fa-whatsapp"></i> J’ai donné</button>
-    </div>
-  </section>
+.don-cta-grid{
+  margin-top:10px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.btn-wide{grid-column:1 / -1}
+@media (max-width:340px){
+  .don-cta-grid{grid-template-columns:1fr}
+  .btn-wide{grid-column:auto}
+}
 
-  <section class="card don-admin" id="don-admin">
-    <h3 class="don-admin-title"><i class="fa-solid fa-chart-simple"></i> Suivi des dons</h3>
+/* Admin dons */
+.don-admin{padding:12px; display:none}
+.don-admin-title{margin:0 0 8px; color:#1f5e53}
+.kpis{display:flex; justify-content:space-between; gap:8px; margin-top:6px; font-weight:900; flex-wrap:wrap}
+.kpis div{background:#f8fffd; border:1px dashed #bfe4db; border-radius:10px; padding:6px 8px}
+.progress{height:10px; background:#e8f4f1; border-radius:999px; overflow:hidden}
+.progress>span{display:block; height:100%; background:#16a34a; width:0%}
+.quick-amounts{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-start; margin-top:10px}
+.chip{
+  padding:8px 10px;
+  border-radius:999px;
+  border:1px solid #cfe7e1;
+  background:#fff;
+  color:var(--green);
+  font-weight:900;
+  cursor:pointer;
+}
+.add-don{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+.add-don input,.add-don select{padding:10px; border:1px solid #e5e7eb; border-radius:12px; flex:1; min-width:120px}
+.add-don .btn{flex:0 0 auto}
+.table{width:100%; border-collapse:collapse; margin-top:8px}
+.table th,.table td{border-bottom:1px solid #eef2f7; padding:8px; font-size:12px}
+.badge{padding:3px 6px; border-radius:999px; font-weight:900; font-size:11px}
+.b-ok{background:#dcfce7; color:#14532d}
+.b-p{background:#fff7ed; color:#7c2d12}
+.b-no{background:#fee2e2; color:#7f1d1d}
 
-    <div class="kpis">
-      <div>Objectif : <span id="don-goal">100 000</span> CFA</div>
-      <div>Aujourd’hui : <span id="don-today">0</span> CFA</div>
-    </div>
+/* Tools */
+.tools{padding:12px}
+.tools-head{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
+.tools-head h3{margin:0; color:#1f5e53}
+.tools-grid{display:grid; grid-template-columns:1fr; gap:10px; margin-top:10px}
+.tool{
+  border-radius:14px;
+  background:#f4faf8;
+  box-shadow:inset 0 0 0 1px #e3f0eb;
+  padding:12px;
+}
+.tool-title{font-weight:900; color:#1f5e53; display:flex; gap:8px; align-items:center; margin-bottom:8px}
+.tasbih{display:grid; gap:10px}
+.tasbih-count{
+  font-size:34px;
+  font-weight:900;
+  color:#134e42;
+  background:#fff;
+  border-radius:14px;
+  padding:10px 12px;
+  box-shadow:inset 0 0 0 1px #e5e7eb;
+  text-align:center;
+}
+.tasbih-actions{display:flex; gap:8px}
+.tasbih-actions .btn{flex:1}
 
-    <div class="progress" aria-label="Progression collecte"><span id="don-bar"></span></div>
+/* Bottom nav */
+.nav{
+  position:fixed;
+  bottom:0;
+  left:50%;
+  transform:translateX(-50%);
+  width:100%;
+  max-width:560px;
+  background:var(--card);
+  box-shadow:0 -10px 18px rgba(0,0,0,.08);
+  padding:6px 6px calc(6px + env(safe-area-inset-bottom));
+  display:flex;
+  justify-content:space-between;
+  gap:6px;
+  z-index:50;
+  border-top-left-radius:16px;
+  border-top-right-radius:16px;
+}
+.nav-btn{
+  flex:1;
+  background:none;
+  border:none;
+  color:var(--green);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+  font-weight:900;
+  cursor:pointer;
+  padding:6px 0;
+  border-radius:12px;
+}
+.nav-btn i{font-size:18px}
+.nav-btn span{font-size:11px; line-height:1}
+@media (max-width:340px){
+  .nav-btn span{display:none}
+  .nav-btn i{font-size:20px}
+}
+.notif{
+  position:absolute; top:-2px; right:10px;
+  background:var(--accent); color:#fff;
+  border-radius:999px; padding:1px 6px; font-size:11px; display:none
+}
 
-    <div class="kpis">
-      <div>Mois : <span id="don-month">0</span> CFA</div>
-      <div>Reste : <span id="don-left">0</span> CFA</div>
-    </div>
+/* Modal + admin */
+.modal{display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); padding:26px 12px; z-index:100}
+.modal .box{background:#fff; border-radius:14px; padding:16px; max-width:560px; margin:0 auto; position:relative; max-height:88vh; overflow:auto}
+.close{position:absolute; right:10px; top:8px; font-size:24px; cursor:pointer}
+#names-list{max-height:70vh; overflow-y:auto; padding-right:6px}
+#names-list li{display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid #eef2f7}
+#names-list li:last-child{border-bottom:none}
 
-    <div class="kpis kpis-week">
-      <div><i class="fa-solid fa-calendar-week"></i> Semaine : <span id="don-week">0</span> CFA</div>
-      <div>Zakat : <span id="don-week-zakat">0</span></div>
-      <div>Sadaqa : <span id="don-week-sadaqa">0</span></div>
-      <div>Travaux : <span id="don-week-travaux">0</span></div>
-    </div>
+.admin label{display:block; font-weight:900; color:#1f5e53; margin-top:12px}
+.admin input,.admin select,.admin textarea{width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:12px}
+.admin input[readonly]{background:#f8fafc}
+.admin .row{display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end}
+.save{margin-top:14px; width:100%; padding:12px; border:none; border-radius:12px; background:var(--accent); color:#fff; font-weight:900; cursor:pointer}
+.status{padding:10px 12px; border-radius:12px; color:#fff; display:none}
 
-    <div class="quick-amounts" aria-label="Montants rapides">
-      <button class="chip" data-amt="1000">+1k</button>
-      <button class="chip" data-amt="2000">+2k</button>
-      <button class="chip" data-amt="5000">+5k</button>
-      <button class="chip" data-amt="10000">+10k</button>
-    </div>
+/* Admin extras */
+.admin-top{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:10px}
+.pill{
+  padding:8px 10px;
+  border-radius:999px;
+  background:#f4faf8;
+  box-shadow:inset 0 0 0 1px #e3f0eb;
+  color:#1f5e53;
+  font-weight:900;
+}
+.official-link{
+  margin-top:12px;
+  border-radius:14px;
+  background:#f8fffd;
+  border:1px dashed #bfe4db;
+  padding:12px;
+}
+.official-title{font-weight:900; color:#1f5e53; display:flex; align-items:center; gap:8px}
+#official-url{margin-top:8px}
 
-    <div class="add-don">
-      <input id="don-amt" type="number" placeholder="Montant CFA"/>
-      <select id="don-method"><option>Wave</option><option>Orange</option><option>Espèces</option></select>
-      <select id="don-category" title="Catégorie">
-        <option>Zakat</option>
-        <option selected>Sadaqa</option>
-        <option>Travaux</option>
-      </select>
-      <input id="don-ref" placeholder="Réf./Remarque"/>
-      <button class="btn btn-primary" id="don-add">Ajouter</button>
-    </div>
-
-    <table class="table" id="don-table">
-      <thead><tr><th>Heure</th><th>Montant</th><th>Mode</th><th>Cat.</th><th>Réf.</th><th>Statut</th><th></th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </section>
-
-  <section class="card tools">
-    <div class="tools-head">
-      <h3>🧩 Outils</h3>
-      <span class="small">Mobile first</span>
-    </div>
-
-    <div class="tools-grid">
-      <div class="tool">
-        <div class="tool-title"><i class="fa-solid fa-location-arrow"></i> Qibla (Maps)</div>
-        <div class="small" id="qibla-maps-status">Utilise la ville de la mosquée.</div>
-        <button class="btn btn-ghost" id="qibla-maps-btn">Ouvrir dans Google Maps</button>
-      </div>
-
-      <div class="tool">
-        <div class="tool-title"><i class="fa-solid fa-hand"></i> Tasbih</div>
-        <div class="tasbih">
-          <div class="tasbih-count" id="tasbih-count">0</div>
-          <div class="tasbih-actions">
-            <button class="btn btn-primary" id="tasbih-plus">+1</button>
-            <button class="btn btn-ghost" id="tasbih-reset">Reset</button>
-          </div>
-          <div class="small">Compteur local sur ton téléphone.</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <div id="status" class="status"></div>
-</main>
-
-<footer class="nav">
-  <button id="events-btn" class="nav-btn"><i class="fa-solid fa-calendar-alt"></i><span>Évén.</span></button>
-  <button id="names-btn" class="nav-btn"><i class="fa-solid fa-kaaba"></i><span>Noms</span></button>
-  <button id="announce-btn" class="nav-btn" style="position:relative">
-    <i class="fa-solid fa-bell"></i><span>Annon.</span><span id="notif" class="notif">1</span>
-  </button>
-  <button id="about-btn" class="nav-btn"><i class="fa-solid fa-circle-info"></i><span>À prop.</span></button>
-  <button id="share-btn" class="nav-btn"><i class="fa-brands fa-whatsapp"></i><span>Partag.</span></button>
-</footer>
-
-<div id="modal-ann" class="modal"><div class="box"><span class="close">&times;</span><h3>Annonces</h3><p id="announcement-text">—</p></div></div>
-<div id="modal-events" class="modal"><div class="box"><span class="close">&times;</span><h3>Événements</h3><div id="events-list">—</div></div></div>
-<div id="modal-names" class="modal"><div class="box"><span class="close">&times;</span><h3 id="names-header">Les 99 Noms d'Allah</h3><ul id="names-list"></ul></div></div>
-<div id="modal-about" class="modal"><div class="box"><span class="close">&times;</span><h3>À propos</h3><p><strong>Contact :</strong> <span id="about-contact-name">—</span><br><strong>Téléphone :</strong> <span id="about-contact-phone">—</span></p></div></div>
-
-<div id="modal-admin" class="modal" role="dialog" aria-modal="true">
-  <div class="box admin">
-    <span class="close">&times;</span>
-    <h3>Panneau d'administration</h3>
-
-    <div id="admin-login">
-      <div class="small" style="margin-top:4px">Connexion Admin : téléphone + PIN</div>
-
-      <label>Téléphone (WhatsApp)</label>
-      <input id="login-phone" inputmode="tel" placeholder="+22177xxxxxxx"/>
-
-      <label>PIN</label>
-      <input id="login-pin" inputmode="numeric" placeholder="****"/>
-
-      <button id="login-submit" class="save" style="background: var(--green)">
-        <i class="fa-solid fa-right-to-bracket"></i> Se connecter
-      </button>
-
-      <p class="small" id="login-hint"></p>
-    </div>
-
-    <div id="admin-panel" style="display:none">
-      <div class="admin-top">
-        <div class="pill">
-          <strong id="role-hint">—</strong>
-        </div>
-        <button id="logout" class="btn btn-ghost" style="padding:8px 10px; min-width:auto">
-          <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
-        </button>
-      </div>
-
-      <div class="official-link">
-        <div class="official-title"><i class="fa-solid fa-link"></i> Lien officiel (public)</div>
-        <div class="small">À partager sur WhatsApp / QR code.</div>
-        <input id="official-url" readonly/>
-        <button id="copy-url" class="btn btn-primary" style="margin-top:8px">
-          <i class="fa-solid fa-copy"></i> Copier
-        </button>
-      </div>
-
-      <div class="row">
-        <div style="flex:1">
-          <label>Choisir la mosquée</label>
-          <select id="adm-mosque"></select>
-        </div>
-
-        <div id="super-actions" style="display:none; gap:10px; align-items:flex-end">
-          <div>
-            <label>&nbsp;</label>
-            <button id="add-mosque" class="save" style="padding:10px 12px; background:#16a34a">Ajouter</button>
-          </div>
-          <div>
-            <label>&nbsp;</label>
-            <button id="del-mosque" class="save" style="padding:10px 12px; background:#ef4444">Supprimer</button>
-          </div>
-        </div>
-      </div>
-
-      <label>ID (slug) — ne change pas</label>
-      <input id="adm-id" readonly/>
-
-      <label>Nom de la mosquée</label><input id="adm-name"/>
-      <label>Ville (API)</label><select id="adm-city"></select>
-
-      <div class="row">
-        <div style="flex:1"><label>Wave Money</label><input id="adm-wave"/></div>
-        <div style="flex:1"><label>Orange Money</label><input id="adm-orange"/></div>
-      </div>
-
-      <div class="row">
-        <div style="flex:1"><label>Contact (nom)</label><input id="adm-contact"/></div>
-        <div style="flex:1"><label>Téléphone (WhatsApp)</label><input id="adm-phone"/></div>
-      </div>
-
-      <label>Jumua (HH:MM)</label><input id="adm-jumua" type="time"/>
-      <label>Annonces</label><textarea id="adm-ann" rows="3"></textarea>
-      <label>Événements (un par ligne : Titre | Date)</label><textarea id="adm-events" rows="4"></textarea>
-
-      <h3 style="margin-top:18px">Précision des horaires</h3>
-      <div class="row">
-        <div style="flex:1"><label>Méthode</label>
-          <select id="adm-method">
-            <option value="3">MWL (défaut)</option>
-            <option value="5">Egyptian</option>
-            <option value="1">Karachi</option>
-            <option value="2">ISNA</option>
-            <option value="4">Umm Al-Qura</option>
-            <option value="12">Union des mosquées de France</option>
-          </select>
-        </div>
-        <div style="flex:1"><label>Madhhab (Asr)</label>
-          <select id="adm-school">
-            <option value="0">Maliki/Shafi</option>
-            <option value="1">Hanafi</option>
-          </select>
-        </div>
-      </div>
-      <label>Offsets (min) Fajr,Chourouk,Dhuhr,Asr,Maghrib,Isha</label><input id="adm-offsets" placeholder="0,0,0,0,0,0"/>
-
-      <div id="advanced-block" style="display:none; border-top:1px dashed #e5e7eb; margin-top:12px; padding-top:10px">
-        <h3>Options avancées</h3>
-        <label>URL audio Adhan (mp3)</label><input id="adm-adhan-url" placeholder="https://…/adhan.mp3"/>
-        <label>Plage silencieuse (HH:MM–HH:MM)</label><input id="adm-quiet" placeholder="22:00-05:00"/>
-        <label><input type="checkbox" id="adm-allow-fajr"/> Autoriser Fajr pendant la plage silencieuse</label>
-      </div>
-
-      <h3 style="margin-top:18px">Objectif</h3>
-      <div class="row">
-        <div style="flex:1"><label>Objectif journalier (CFA)</label><input id="adm-goal" type="number" placeholder="100000"/></div>
-        <div style="flex:1"><label>Solde Wave (info)</label><input id="adm-solde-wave" type="number" placeholder="optionnel"/></div>
-        <div style="flex:1"><label>Solde Orange (info)</label><input id="adm-solde-orange" type="number" placeholder="optionnel"/></div>
-      </div>
-
-      <div id="admin-mgmt-block" style="display:none; border-top:1px dashed #e5e7eb; margin-top:14px; padding-top:12px">
-        <h3>Gestion des admins (SUPER ADMIN)</h3>
-        <div class="small">1 mosquée = 1 admin (téléphone + PIN). Reset met le PIN à <strong>1234</strong>.</div>
-        <div id="admin-mgmt-list" style="margin-top:10px; display:grid; gap:10px"></div>
-      </div>
-
-      <button id="save" class="save"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button>
-    </div>
-  </div>
-</div>
-
-<script src="app.js?v=7"></script>
-</body>
-</html>
+/* Desktop enhancement */
+@media (min-width:768px){
+  body{padding:20px 16px 96px}
+  .title{font-size:26px}
+  #current-time{font-size:28px}
+  .top-row{grid-template-columns:1fr 1.2fr; align-items:stretch}
+  .tools-grid{grid-template-columns:1fr 1fr}
+}
