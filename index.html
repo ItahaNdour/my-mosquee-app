@@ -1,315 +1,96 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>MyMosque</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyMosque</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-
-  <link rel="stylesheet" href="styles.css?v=3"/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=6">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 
 <body>
+
 <header class="card header">
-  <button id="admin-button" class="icon-btn" title="Administration" aria-label="Administration">
-    <i class="fa-solid fa-user-shield"></i>
-    <span id="admin-badge" class="admin-badge" aria-label="Notifications dons" style="display:none">0</span>
-  </button>
+<button id="admin-button" class="icon-btn">
+<i class="fa-solid fa-user-shield"></i>
+<span id="admin-badge" class="admin-badge" style="display:none">0</span>
+</button>
 
-  <h1 id="mosque-name" class="title">Mosquée</h1>
+<h1 id="mosque-name" class="title">Mosquée</h1>
 
-  <!-- Sélecteur (visible seulement si pas lock ?m=...) -->
-  <div class="sel-row" id="mosque-select-row">
-    <i class="fa-solid fa-mosque muted" aria-hidden="true"></i>
-    <select id="mosque-selector" title="Mosquée"></select>
-  </div>
+<div id="mosque-select-row" style="display:none">
+<select id="mosque-selector"></select>
+</div>
 
-  <div class="dates">
-    <div class="small" id="hijri-date">—</div>
-    <div class="small" id="gregorian-date">—</div>
-  </div>
-
-  <div class="clock">
-    <span id="current-time">--:--:--</span>
-  </div>
-
-  <div class="next" aria-live="polite">
-    <span class="next-name" id="next-prayer-name">Chargement...</span>
-    <span class="next-timer" id="countdown">--:--:--</span>
-  </div>
-
-  <!-- Ramadan -->
-  <section class="card ramadan" id="ramadan-card" style="display:none">
-    <div class="ramadan-top">
-      <div class="ramadan-left">
-        <div class="ramadan-title">🌙 Ramadan</div>
-        <div class="small" id="ramadan-sub">—</div>
-      </div>
-      <div class="ramadan-right">
-        <div class="ramadan-day" id="ramadan-day">—</div>
-        <div class="small" id="ramadan-left">—</div>
-      </div>
-    </div>
-
-    <div class="ramadan-pill small" id="ramadan-duration">—</div>
-
-    <div class="ramadan-grid">
-      <div class="ramadan-box">
-        <div class="ramadan-box-title">Suhoor (Fajr)</div>
-        <div class="ramadan-box-time" id="ramadan-suhoor">--:--</div>
-      </div>
-      <div class="ramadan-box">
-        <div class="ramadan-box-title">Iftar (Maghrib)</div>
-        <div class="ramadan-box-time" id="ramadan-iftar">--:--</div>
-      </div>
-    </div>
-  </section>
+<div class="clock">
+<span id="current-time"></span>
+</div>
 </header>
 
 <main class="main">
-  <section class="card list" aria-label="Horaires de prière">
-    <div class="row" id="fajr-item"><span class="name" id="fajr-name">Souba (Fajr)</span><span class="time" id="fajr-time">--:--</span></div>
-    <div class="row" id="dhuhr-item"><span class="name" id="dhuhr-name">Tisbar (Dhuhr)</span><span class="time" id="dhuhr-time">--:--</span></div>
-    <div class="row" id="asr-item"><span class="name" id="asr-name">Takusan (Asr)</span><span class="time" id="asr-time">--:--</span></div>
-    <div class="row" id="maghrib-item"><span class="name" id="maghrib-name">Timis (Maghrib)</span><span class="time" id="maghrib-time">--:--</span></div>
-    <div class="row" id="isha-item"><span class="name" id="isha-name">Guéwé (Isha)</span><span class="time" id="isha-time">--:--</span></div>
-  </section>
 
-  <section class="card duo">
-    <div class="duo-grid">
-      <div class="duo-item">
-        <div class="duo-title">Jumua</div>
-        <div class="duo-time" id="jumua-time">13:30</div>
-      </div>
-      <div class="duo-item">
-        <div class="duo-title">Chourouk</div>
-        <div class="duo-time" id="shuruq-time">--:--</div>
-      </div>
-    </div>
-  </section>
+<section class="card">
+<h3>💰 Faire un don</h3>
 
-  <!-- PUBLIC DON -->
-  <section class="card don-public">
-    <div class="section-title">
-      <h3>💰 Faire un don</h3>
-      <span class="small">Wave / Orange / Espèces</span>
-    </div>
-
-    <!-- PROGRESSION MENSUELLE (PUBLIC) -->
-    <div class="don-public-progress" aria-label="Progression des dons ce mois">
-      <div class="don-progress-top">
-        <div class="don-progress-title">
-          <i class="fa-solid fa-chart-line"></i> Progression du mois
-        </div>
-        <div class="don-progress-pct" id="don-public-pct">—%</div>
-      </div>
-
-      <div class="don-progress-kpis">
-        <div class="kpi">
-          <div class="kpi-label">Objectif</div>
-          <div class="kpi-value"><span id="don-public-goal">—</span> <span class="kpi-unit">CFA</span></div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-label">Collecté</div>
-          <div class="kpi-value"><span id="don-public-month">—</span> <span class="kpi-unit">CFA</span></div>
-        </div>
-      </div>
-
-      <div class="don-progress-bar" aria-label="Barre de progression"><span id="don-public-bar"></span></div>
-      <div class="small don-progress-hint">Les montants affichés sont ceux confirmés par la mosquée.</div>
-    </div>
-
-    <div class="don-category">
-      <div class="don-category-label">
-        <i class="fa-solid fa-tags"></i> Catégorie
-      </div>
-      <select id="don-public-category" title="Catégorie du don">
-        <option value="Zakat">Zakat</option>
-        <option value="Sadaqa" selected>Sadaqa</option>
-        <option value="Travaux">Travaux / Entretien</option>
-      </select>
-      <div class="small" id="don-public-category-help">—</div>
-    </div>
-
-    <ul class="don-lines">
-      <li><span><i class="fa-solid fa-wallet" style="color:#0ea5e9"></i> Wave</span><strong id="wave-number">—</strong></li>
-      <li><span><i class="fa-solid fa-mobile-screen-button" style="color:#f97316"></i> Orange</span><strong id="orange-number">—</strong></li>
-      <li><span><i class="fa-solid fa-hand-holding-heart" style="color:#16a34a"></i> Espèces</span><strong id="cash-info">Mosquée</strong></li>
-    </ul>
-
-    <div class="don-cta">
-      <button class="btn btn-primary" id="btn-wave"><i class="fa-solid fa-hand-holding-dollar"></i> Wave</button>
-      <button class="btn btn-primary" id="btn-orange"><i class="fa-solid fa-hand-holding-dollar"></i> Orange</button>
-      <button class="btn btn-ghost" id="btn-claimed"><i class="fa-brands fa-whatsapp"></i> J’ai donné</button>
-    </div>
-  </section>
-
-  <!-- ADMIN DON -->
-  <section class="card don-admin" id="don-admin">
-    <h3 class="don-admin-title"><i class="fa-solid fa-chart-simple"></i> Suivi des dons</h3>
-
-    <div class="kpis">
-      <div>Objectif (mois) : <span id="don-goal">—</span> CFA</div>
-      <div>Mois (confirmé) : <span id="don-month">—</span> CFA</div>
-    </div>
-
-    <div class="progress" aria-label="Progression collecte"><span id="don-bar"></span></div>
-
-    <div class="kpis">
-      <div>Aujourd’hui : <span id="don-today">—</span> CFA</div>
-      <div>Reste : <span id="don-left">—</span> CFA</div>
-    </div>
-
-    <div class="kpis kpis-week">
-      <div><i class="fa-solid fa-calendar-week"></i> Semaine : <span id="don-week">0</span> CFA</div>
-      <div>Zakat : <span id="don-week-zakat">0</span></div>
-      <div>Sadaqa : <span id="don-week-sadaqa">0</span></div>
-      <div>Travaux : <span id="don-week-travaux">0</span></div>
-    </div>
-
-    <div class="quick-amounts" aria-label="Montants rapides">
-      <button class="chip" data-amt="1000">+1k</button>
-      <button class="chip" data-amt="2000">+2k</button>
-      <button class="chip" data-amt="5000">+5k</button>
-      <button class="chip" data-amt="10000">+10k</button>
-    </div>
-
-    <div class="add-don">
-      <input id="don-amt" type="number" placeholder="Montant CFA"/>
-      <select id="don-method"><option>Wave</option><option>Orange</option><option>Espèces</option></select>
-      <select id="don-category" title="Catégorie">
-        <option>Zakat</option>
-        <option selected>Sadaqa</option>
-        <option>Travaux</option>
-      </select>
-      <input id="don-ref" placeholder="Réf./Remarque"/>
-      <button class="btn btn-primary" id="don-add">Ajouter</button>
-    </div>
-
-    <table class="table" id="don-table">
-      <thead><tr><th>Heure</th><th>Montant</th><th>Mode</th><th>Cat.</th><th>Réf.</th><th>Statut</th><th></th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </section>
-
-  <section class="card tools">
-    <div class="tools-head">
-      <h3>🧩 Outils</h3>
-      <span class="small"></span>
-    </div>
-
-    <div class="tools-grid">
-      <div class="tool">
-        <div class="tool-title"><i class="fa-solid fa-location-arrow"></i> Qibla (Maps)</div>
-        <div class="small" id="qibla-maps-status">Utilise la ville de la mosquée.</div>
-        <button class="btn btn-ghost" id="qibla-maps-btn">
-          Ouvrir dans Google Maps
-        </button>
-      </div>
-
-      <div class="tool">
-        <div class="tool-title"><i class="fa-solid fa-hand"></i> Tasbih</div>
-        <div class="tasbih">
-          <div class="tasbih-count" id="tasbih-count">0</div>
-          <div class="tasbih-actions">
-            <button class="btn btn-primary" id="tasbih-plus">+1</button>
-            <button class="btn btn-ghost" id="tasbih-reset">Reset</button>
-          </div>
-          <div class="small">Compteur local sur ton téléphone.</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <div id="status" class="status"></div>
-</main>
-
-<footer class="nav">
-  <button id="events-btn" class="nav-btn"><i class="fa-solid fa-calendar-alt"></i><span>Évén.</span></button>
-  <button id="names-btn" class="nav-btn"><i class="fa-solid fa-kaaba"></i><span>Noms</span></button>
-  <button id="announce-btn" class="nav-btn" style="position:relative">
-    <i class="fa-solid fa-bell"></i><span>Annon.</span><span id="notif" class="notif">1</span>
-  </button>
-  <button id="about-btn" class="nav-btn"><i class="fa-solid fa-circle-info"></i><span>À prop.</span></button>
-  <button id="share-btn" class="nav-btn"><i class="fa-brands fa-whatsapp"></i><span>Partag.</span></button>
-</footer>
-
-<div id="modal-ann" class="modal"><div class="box"><span class="close">&times;</span><h3>Annonces</h3><p id="announcement-text">—</p></div></div>
-<div id="modal-events" class="modal"><div class="box"><span class="close">&times;</span><h3>Événements</h3><div id="events-list">—</div></div></div>
-<div id="modal-names" class="modal"><div class="box"><span class="close">&times;</span><h3 id="names-header">Les 99 Noms d'Allah</h3><ul id="names-list"></ul></div></div>
-<div id="modal-about" class="modal"><div class="box"><span class="close">&times;</span><h3>À propos</h3><p><strong>Contact :</strong> <span id="about-contact-name">—</span><br><strong>Téléphone :</strong> <span id="about-contact-phone">—</span></p></div></div>
-
-<div id="modal-admin" class="modal" role="dialog" aria-modal="true">
-  <div class="box admin">
-    <span class="close">&times;</span><h3>Panneau d'administration</h3>
-
-    <div class="row" id="super-row" style="display:none">
-      <div style="flex:1"><label>Mosquée</label><select id="adm-mosque"></select></div>
-      <div><label>&nbsp;</label><button id="add-mosque" class="save" style="padding:10px 12px; background:#16a34a">Ajouter</button></div>
-      <div><label>&nbsp;</label><button id="del-mosque" class="save" style="padding:10px 12px; background:#ef4444">Supprimer</button></div>
-    </div>
-
-    <label>Nom de la mosquée</label><input id="adm-name"/>
-    <label>Ville (API)</label><select id="adm-city"></select>
-
-    <div class="row">
-      <div style="flex:1"><label>Wave Money</label><input id="adm-wave"/></div>
-      <div style="flex:1"><label>Orange Money</label><input id="adm-orange"/></div>
-    </div>
-
-    <div class="row">
-      <div style="flex:1"><label>Contact (nom)</label><input id="adm-contact"/></div>
-      <div style="flex:1"><label>Téléphone (WhatsApp)</label><input id="adm-phone"/></div>
-    </div>
-
-    <label>Jumua (HH:MM)</label><input id="adm-jumua" type="time"/>
-    <label>Annonces</label><textarea id="adm-ann" rows="3"></textarea>
-    <label>Événements (un par ligne : Titre | Date)</label><textarea id="adm-events" rows="4"></textarea>
-
-    <h3 style="margin-top:18px">Précision des horaires</h3>
-    <div class="row">
-      <div style="flex:1"><label>Méthode</label>
-        <select id="adm-method">
-          <option value="3">MWL (défaut)</option>
-          <option value="5">Egyptian</option>
-          <option value="1">Karachi</option>
-          <option value="2">ISNA</option>
-          <option value="4">Umm Al-Qura</option>
-          <option value="12">Union des mosquées de France</option>
-        </select>
-      </div>
-      <div style="flex:1"><label>Madhhab (Asr)</label>
-        <select id="adm-school">
-          <option value="0">Maliki/Shafi</option>
-          <option value="1">Hanafi</option>
-        </select>
-      </div>
-    </div>
-    <label>Offsets (min) Fajr,Chourouk,Dhuhr,Asr,Maghrib,Isha</label><input id="adm-offsets" placeholder="0,0,0,0,0,0"/>
-
-    <div id="advanced-block" style="display:none; border-top:1px dashed #e5e7eb; margin-top:12px; padding-top:10px">
-      <h3>Options avancées</h3>
-      <label>URL audio Adhan (mp3)</label><input id="adm-adhan-url" placeholder="https://…/adhan.mp3"/>
-      <label>Plage silencieuse (HH:MM–HH:MM)</label><input id="adm-quiet" placeholder="22:00-05:00"/>
-      <label><input type="checkbox" id="adm-allow-fajr"/> Autoriser Fajr pendant la plage silencieuse</label>
-    </div>
-
-    <h3 style="margin-top:18px">Objectif</h3>
-    <div class="row">
-      <div style="flex:1"><label>Objectif mensuel (CFA)</label><input id="adm-goal" type="number" placeholder="500000"/></div>
-      <div style="flex:1"><label>Solde Wave (info)</label><input id="adm-solde-wave" type="number" placeholder="optionnel"/></div>
-      <div style="flex:1"><label>Solde Orange (info)</label><input id="adm-solde-orange" type="number" placeholder="optionnel"/></div>
-    </div>
-
-    <button id="save" class="save"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button>
-    <p class="small" id="role-hint"></p>
-  </div>
+<div>
+Objectif : <strong><span id="don-public-goal">0</span> CFA</strong><br>
+Collecté : <strong><span id="don-public-month">0</span> CFA</strong>
 </div>
 
-<script src="app.js?v=3"></script>
+<div class="progress-bar">
+<span id="don-public-bar"></span>
+</div>
+
+<button id="btn-wave" class="btn">Wave</button>
+<button id="btn-orange" class="btn">Orange</button>
+<button id="btn-claimed" class="btn btn-ghost">J’ai donné</button>
+
+</section>
+
+<section id="don-admin" class="card" style="display:none">
+<h3>Suivi des dons</h3>
+
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Montant</th>
+<th>Cat.</th>
+<th>Réf.</th>
+<th>Statut</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody id="don-table-body"></tbody>
+</table>
+</section>
+
+</main>
+
+<!-- MODAL MINI FORM -->
+<div id="don-modal" class="modal">
+<div class="modal-box">
+<h3>Confirmation du don</h3>
+
+<input id="don-amount" type="number" placeholder="Montant CFA">
+
+<select id="don-category">
+<option>Zakat</option>
+<option selected>Sadaqa</option>
+<option>Travaux</option>
+</select>
+
+<input id="don-ref" placeholder="Référence">
+
+<button id="don-confirm" class="btn">Confirmer</button>
+<button onclick="closeDonModal()" class="btn btn-ghost">Annuler</button>
+</div>
+</div>
+
+<div id="popup" class="popup"></div>
+
+<script src="app.js?v=6"></script>
 </body>
 </html>
