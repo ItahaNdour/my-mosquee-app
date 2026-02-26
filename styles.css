@@ -1,4 +1,3 @@
-/* styles.css */
 :root{
   --sand:#f7f3ed; --sand-2:#efe8de; --ink:#0f172a; --muted:#667085;
   --green:#2f7d6d; --green-2:#3f8f7e; --mint:#e7f3f0; --accent:#e4572e;
@@ -22,10 +21,37 @@ body{
 .icon-btn{
   position:absolute; top:10px; right:10px;
   width:40px; height:40px; border:none; border-radius:12px;
-  background:var(--green); color:#fff; display:grid; place-items:center; cursor:pointer
+  background:var(--green); color:#fff; display:grid; place-items:center; cursor:pointer;
+}
+.admin-badge{
+  position:absolute;
+  top:-6px;
+  right:-6px;
+  background:var(--accent);
+  color:#fff;
+  font-weight:900;
+  font-size:11px;
+  padding:2px 6px;
+  border-radius:999px;
+  box-shadow:0 8px 16px rgba(0,0,0,.18);
 }
 .title{margin:6px 0 2px; font-size:22px; color:var(--green); font-weight:800}
 .small{font-size:12px; color:var(--muted)}
+
+.lockline{
+  margin:4px auto 8px;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  justify-content:center;
+  font-weight:800;
+  color:#1f5e53;
+  background:#eef7f4;
+  border:1px dashed #bfe4db;
+  border-radius:999px;
+  padding:6px 10px;
+  max-width:360px;
+}
 
 .sel-row{
   display:flex; justify-content:center; align-items:center;
@@ -34,27 +60,11 @@ body{
 .sel-row select{
   width:100%;
   max-width:320px;
-  padding:10px 40px 10px 10px; /* ✅ place pour cadenas */
+  padding:10px 10px;
   border:1px solid #e5e7eb;
   border-radius:12px;
   font-weight:700;
   background:#fff;
-}
-
-/* ✅ Étape 1: wrapper + cadenas */
-.mosque-select-wrapper{
-  position:relative;
-  width:100%;
-  max-width:320px;
-  display:flex;
-  align-items:center;
-}
-.mosque-lock{
-  position:absolute;
-  right:12px;
-  color:var(--accent);
-  font-size:14px;
-  pointer-events:none;
 }
 
 .dates{display:grid; gap:2px; margin-top:2px}
@@ -81,7 +91,7 @@ body{
 .next-name{color:var(--green-2); font-weight:900; font-size:14px}
 .next-timer{color:var(--accent); font-weight:900; font-size:14px}
 
-/* Ramadan - vert, compact mobile */
+/* Ramadan compact A (vert) */
 .ramadan{
   margin-top:10px;
   padding:12px;
@@ -89,29 +99,36 @@ body{
   color:#fff;
 }
 .ramadan .small{color:rgba(255,255,255,.82)}
-.ramadan-top{display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:flex-start}
+.ramadan-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:10px;
+}
 .ramadan-title{font-weight:900; font-size:15px}
-.ramadan-day{font-weight:900; font-size:18px}
-.ramadan-pill{
-  margin-top:10px;
-  padding:8px 10px;
-  border-radius:12px;
-  background:rgba(255,255,255,.10);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);
+.ramadan-day{font-weight:900; font-size:16px}
+.ramadan-sub{
+  margin-top:6px;
   text-align:left;
 }
-.ramadan-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px}
-.ramadan-box{
+.ramadan-line{
+  margin-top:10px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.ramadan-chip{
   border-radius:14px;
   padding:10px;
   background:rgba(255,255,255,.10);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);
-  text-align:center;
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:10px;
 }
-.ramadan-box-title{font-weight:800; color:rgba(255,255,255,.9); font-size:13px}
-.ramadan-box-time{font-weight:900; font-size:20px; margin-top:6px}
 @media (max-width:360px){
-  .ramadan-grid{grid-template-columns:1fr}
+  .ramadan-line{grid-template-columns:1fr}
 }
 
 /* Main */
@@ -164,7 +181,6 @@ body{
   border-radius:12px;
   font-weight:900;
 }
-
 .don-cta{
   display:flex;
   gap:8px;
@@ -182,35 +198,9 @@ body{
 }
 .btn-primary{background:var(--green); color:#fff}
 .btn-ghost{background:#fff; color:var(--green); border:1px solid #cfe7e1}
+.don-note{margin-top:8px}
 
-/* Admin dons */
-.don-admin{padding:12px; display:none}
-.don-admin-title{margin:0 0 8px; color:#1f5e53}
-.kpis{display:flex; justify-content:space-between; gap:8px; margin-top:6px; font-weight:900; flex-wrap:wrap}
-.kpis div{background:#f8fffd; border:1px dashed #bfe4db; border-radius:10px; padding:6px 8px}
-.progress{height:10px; background:#e8f4f1; border-radius:999px; overflow:hidden}
-.progress>span{display:block; height:100%; background:#16a34a; width:0%}
-.quick-amounts{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-start; margin-top:10px}
-.chip{
-  padding:8px 10px;
-  border-radius:999px;
-  border:1px solid #cfe7e1;
-  background:#fff;
-  color:var(--green);
-  font-weight:900;
-  cursor:pointer;
-}
-.add-don{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
-.add-don input,.add-don select{padding:10px; border:1px solid #e5e7eb; border-radius:12px; flex:1; min-width:120px}
-.add-don .btn{flex:0 0 auto}
-.table{width:100%; border-collapse:collapse; margin-top:8px}
-.table th,.table td{border-bottom:1px solid #eef2f7; padding:8px; font-size:12px}
-.badge{padding:3px 6px; border-radius:999px; font-weight:900; font-size:11px}
-.b-ok{background:#dcfce7; color:#14532d}
-.b-p{background:#fff7ed; color:#7c2d12}
-.b-no{background:#fee2e2; color:#7f1d1d}
-
-/* Tools (remplace Qibla boussole) */
+/* Tools */
 .tools{padding:12px}
 .tools-head{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
 .tools-head h3{margin:0; color:#1f5e53}
@@ -294,6 +284,63 @@ body{
 .admin .row{display:flex; gap:10px; flex-wrap:wrap}
 .save{margin-top:14px; width:100%; padding:12px; border:none; border-radius:12px; background:var(--accent); color:#fff; font-weight:900; cursor:pointer}
 .status{padding:10px 12px; border-radius:12px; color:#fff; display:none}
+
+.lbl{display:block; font-weight:900; color:#1f5e53; margin-top:12px}
+.row2{display:flex; gap:10px; flex-wrap:wrap; margin-top:6px}
+
+.pill{
+  display:inline-block;
+  margin-left:8px;
+  background:var(--accent);
+  color:#fff;
+  font-weight:900;
+  font-size:12px;
+  padding:2px 8px;
+  border-radius:999px;
+}
+
+/* Admin link row */
+.admin-link{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+.admin-link input{
+  flex:1;
+}
+
+/* Admin KPIs */
+.kpis{display:flex; justify-content:space-between; gap:8px; margin-top:8px; font-weight:900; flex-wrap:wrap}
+.kpis div{background:#f8fffd; border:1px dashed #bfe4db; border-radius:10px; padding:6px 8px}
+.progress{height:10px; background:#e8f4f1; border-radius:999px; overflow:hidden; margin-top:8px}
+.progress>span{display:block; height:100%; background:#16a34a; width:0%}
+.table{width:100%; border-collapse:collapse; margin-top:10px}
+.table th,.table td{border-bottom:1px solid #eef2f7; padding:8px; font-size:12px}
+.badge{padding:3px 6px; border-radius:999px; font-weight:900; font-size:11px}
+.b-ok{background:#dcfce7; color:#14532d}
+.b-p{background:#fff7ed; color:#7c2d12}
+.b-no{background:#fee2e2; color:#7f1d1d}
+
+/* Mosque selector + lock */
+.mosque-select-wrap{
+  position:relative;
+  width:100%;
+  max-width:320px;
+  display:flex;
+  align-items:center;
+}
+.mosque-select-wrap select{
+  width:100%;
+  padding-right:38px;
+}
+.mosque-lock{
+  position:absolute;
+  right:12px;
+  font-size:14px;
+  color:var(--accent);
+  pointer-events:none;
+}
 
 /* Desktop enhancement only */
 @media (min-width:768px){
