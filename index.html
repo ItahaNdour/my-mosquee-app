@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -23,7 +24,12 @@
 
   <div class="sel-row">
     <i class="fa-solid fa-mosque muted" aria-hidden="true"></i>
-    <select id="mosque-selector" title="Mosquée"></select>
+
+    <!-- ✅ Étape 1: wrapper + cadenas -->
+    <div class="mosque-select-wrapper">
+      <select id="mosque-selector" title="Mosquée"></select>
+      <i id="mosque-lock" class="fa-solid fa-lock mosque-lock" style="display:none;" aria-hidden="true"></i>
+    </div>
   </div>
 
   <div class="dates">
@@ -170,7 +176,7 @@
     </table>
   </section>
 
-  <!-- Remplacement Qibla boussole (supprimée) -->
+  <!-- Tools (Qibla Maps + Tasbih) -->
   <section class="card tools">
     <div class="tools-head">
       <h3>🧩 Outils</h3>
@@ -181,9 +187,7 @@
       <div class="tool">
         <div class="tool-title"><i class="fa-solid fa-location-arrow"></i> Qibla (Maps)</div>
         <div class="small" id="qibla-maps-status">Utilise la ville de la mosquée.</div>
-        <button class="btn btn-ghost" id="qibla-maps-btn">
-          Ouvrir dans Google Maps
-        </button>
+        <button class="btn btn-ghost" id="qibla-maps-btn">Ouvrir dans Google Maps</button>
       </div>
 
       <div class="tool">
