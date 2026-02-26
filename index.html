@@ -1,3 +1,6 @@
+/* =========================
+   File: index.html
+   ========================= */
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -7,11 +10,11 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 
-  <!-- GitHub Pages: chemins RELATIFS + noms exacts -->
-  <link rel="stylesheet" href="./styles.css?v=2"/>
+  <!-- GitHub Pages: chemins RELATIFS + fichiers bien nommés -->
+  <link rel="stylesheet" href="./styles.css?v=3"/>
 </head>
 
 <body>
@@ -22,7 +25,8 @@
 
   <h1 id="mosque-name">Mosquée</h1>
 
-  <div class="sel-row" id="mosque-select-row">
+  <!-- Public: masqué si URL ?m=... (et masqué par défaut) -->
+  <div class="sel-row" id="mosque-selector-wrap" style="display:none">
     <span class="small"><i class="fa-solid fa-mosque"></i></span>
     <select id="mosque-selector" title="Mosquée"></select>
   </div>
@@ -37,11 +41,11 @@
     <span class="timer" id="countdown">--:--:--</span>
   </div>
 
-  <!-- Ramadan -->
-  <section class="card duo" id="ramadan-card" style="margin-top:12px; padding:14px; display:none">
+  <!-- Ramadan (vert MyMosque) -->
+  <section class="card duo ramadan" id="ramadan-card" style="margin-top:12px; padding:14px; display:none">
     <div class="ramadan-head">
       <div class="ramadan-left">
-        <div class="ramadan-title">🌙 Ramadan</div>
+        <div class="ramadan-title"><span class="ramadan-moon">🌙</span> Ramadan</div>
         <div class="small" id="ramadan-sub">—</div>
       </div>
       <div class="ramadan-right">
@@ -50,7 +54,10 @@
       </div>
     </div>
 
-    <div class="ramadan-pill" id="ramadan-duration" style="margin-top:10px; display:none"></div>
+    <div class="ramadan-pill" style="margin-top:10px">
+      <span class="small" style="opacity:.95">Durée du jeûne :</span>
+      <strong id="ramadan-fasting">—</strong>
+    </div>
 
     <div class="duo-grid" style="margin-top:12px">
       <div class="duo-item">
@@ -87,22 +94,27 @@
     </div>
   </section>
 
+  <!-- DON PUBLIC: catégorie visible -->
   <section class="card don-public">
     <h3>💰 Faire un don</h3>
 
-    <div class="don-cause">
+    <div class="don-cat">
       <div class="small" style="font-weight:800;color:#1f5e53">Choisis ta cause</div>
-      <div class="don-cause-row">
-        <i class="fa-solid fa-tag"></i>
-        <select id="don-category-public" aria-label="Catégorie don"></select>
+      <div class="don-cat-row">
+        <span class="small"><i class="fa-solid fa-tag"></i> Catégorie</span>
+        <select id="don-public-category" aria-label="Catégorie de don">
+          <option value="Sadaqa">Sadaqa</option>
+          <option value="Zakat">Zakat</option>
+          <option value="Travaux">Travaux / Entretien</option>
+        </select>
       </div>
-      <div class="small" id="don-category-desc">—</div>
+      <div class="small" id="don-public-desc">—</div>
     </div>
 
     <ul class="don-lines">
       <li><span><i class="fa-solid fa-wallet" style="color:#0ea5e9"></i> Wave Money</span><strong id="wave-number">—</strong></li>
       <li><span><i class="fa-solid fa-mobile-screen-button" style="color:#f97316"></i> Orange Money</span><strong id="orange-number">—</strong></li>
-      <li><span><i class="fa-solid fa-hand-holding-heart" style="color:#16a34a"></i> Espèces</span><strong id="cash-label">—</strong></li>
+      <li><span><i class="fa-solid fa-hand-holding-heart" style="color:#16a34a"></i> Espèces</span><strong id="cash-hint">Mosquée</strong></li>
     </ul>
 
     <div class="don-cta">
@@ -110,35 +122,40 @@
       <button class="btn btn-primary" id="btn-orange"><i class="fa-solid fa-hand-holding-dollar"></i> Orange</button>
       <button class="btn btn-ghost" id="btn-claimed"><i class="fa-brands fa-whatsapp"></i> J’ai donné</button>
     </div>
-
-    <div class="don-public-stats">
-      <div class="kpis">
-        <div>Objectif jour : <span id="don-goal">100 000</span> CFA</div>
-        <div>Collecté : <span id="don-today">0</span> CFA</div>
-      </div>
-
-      <div class="progress" aria-label="Progression collecte"><span id="don-bar"></span></div>
-
-      <div class="kpis">
-        <div>Total mois : <span id="don-month">0</span> CFA</div>
-        <div>Semaine : <span id="don-week">0</span> CFA</div>
-      </div>
-
-      <div class="kpis">
-        <div>Zakat : <span id="don-zakat">0</span></div>
-        <div>Sadaqa : <span id="don-sadaqa">0</span></div>
-        <div>Travaux : <span id="don-travaux">0</span></div>
-      </div>
-    </div>
   </section>
 
+  <!-- DON ADMIN (visible après admin login) -->
   <section class="card don-admin" id="don-admin">
     <h3 class="don-admin-title"><i class="fa-solid fa-chart-simple"></i> Suivi des dons</h3>
 
+    <div class="kpis">
+      <div>Objectif jour : <span id="don-goal">100 000</span> CFA</div>
+      <div>Collecté : <span id="don-today">0</span> CFA</div>
+    </div>
+
+    <div class="progress" aria-label="Progression collecte"><span id="don-bar"></span></div>
+
+    <div class="kpis">
+      <div>Total mois : <span id="don-month">0</span> CFA</div>
+      <div>Semaine : <span id="don-week">0</span> CFA</div>
+    </div>
+
+    <div class="kpis kpis-3">
+      <div>Zakat : <span id="don-zakat">0</span></div>
+      <div>Sadaqa : <span id="don-sadaqa">0</span></div>
+      <div>Travaux : <span id="don-travaux">0</span></div>
+    </div>
+
     <div class="add-don">
       <input id="don-amt" type="number" placeholder="Montant (CFA)"/>
-      <select id="don-method"><option>Wave</option><option>Orange</option><option>Espèces</option></select>
-      <select id="don-cat"></select>
+      <select id="don-method">
+        <option>Wave</option><option>Orange</option><option>Espèces</option>
+      </select>
+      <select id="don-category">
+        <option value="Sadaqa">Sadaqa</option>
+        <option value="Zakat">Zakat</option>
+        <option value="Travaux">Travaux / Entretien</option>
+      </select>
       <input id="don-ref" placeholder="Réf./Remarque"/>
       <button class="btn btn-primary" id="don-add">Ajouter</button>
     </div>
@@ -149,60 +166,57 @@
     </table>
   </section>
 
-  <!-- Qibla: laissé en place mais peut être caché plus tard si tu confirmes suppression -->
-  <section class="card qibla" id="qibla-card">
+  <!-- QIBLA sans boussole: bouton Maps only -->
+  <section class="card qibla-lite">
     <div class="qibla-head">
       <h3>🧭 Qibla</h3>
-      <button class="btn btn-primary qibla-btn" id="qibla-start">
-        <i class="fa-solid fa-compass"></i> Activer
+      <button class="btn btn-primary" id="qibla-maps">
+        <i class="fa-solid fa-location-arrow"></i> Ouvrir Maps
       </button>
     </div>
-
-    <div class="qibla-wrap">
-      <div class="qibla-dial" aria-label="Boussole Qibla">
-        <div class="qibla-needle" id="qibla-needle"><div class="qibla-arrow"></div></div>
-        <div class="qibla-center"></div>
-        <div class="qibla-n">N</div>
-        <div class="qibla-e">E</div>
-        <div class="qibla-s">S</div>
-        <div class="qibla-w">W</div>
-      </div>
-
-      <div class="qibla-info">
-        <div class="qibla-line"><span class="small">Direction Qibla</span><strong id="qibla-bearing">—°</strong></div>
-        <div class="qibla-line"><span class="small">Cap</span><strong id="qibla-heading">—°</strong></div>
-
-        <div class="qibla-tip" id="qibla-tip">
-          Place ton téléphone à plat et bouge-le doucement jusqu’à stabilisation.
-        </div>
-
-        <div class="small" id="qibla-status">Appuie sur “Activer” (permission cap + localisation).</div>
-
-        <button class="btn btn-ghost" id="qibla-maps">
-          <i class="fa-solid fa-location-arrow"></i> Ouvrir dans Google Maps
-        </button>
-
-        <button class="btn btn-ghost" id="qibla-hide" style="margin-top:8px">
-          <i class="fa-solid fa-eye-slash"></i> Masquer Qibla
-        </button>
-      </div>
-    </div>
+    <div class="small" id="qibla-status">Utilise Google Maps (plus fiable sur mobile).</div>
   </section>
 
   <div id="status" class="status"></div>
 </main>
 
 <footer>
-  <button id="events-btn"><i class="fa-solid fa-calendar-alt"></i><span>Événements</span></button>
+  <button id="events-btn"><i class="fa-solid fa-calendar-alt"></i><span>Évén.</span></button>
   <button id="names-btn"><i class="fa-solid fa-kaaba"></i><span>Noms</span></button>
-  <button id="announce-btn" style="position:relative"><i class="fa-solid fa-bell"></i><span>Annonces</span><span id="notif" class="notif">1</span></button>
-  <button id="about-btn"><i class="fa-solid fa-circle-info"></i><span>À propos</span></button>
-  <button id="share-btn"><i class="fa-brands fa-whatsapp"></i><span>Partager</span></button>
+  <button id="tasbih-btn"><i class="fa-solid fa-circle-plus"></i><span>Tasbih</span></button>
+  <button id="announce-btn" style="position:relative"><i class="fa-solid fa-bell"></i><span>Annon.</span><span id="notif" class="notif">1</span></button>
+  <button id="about-btn"><i class="fa-solid fa-circle-info"></i><span>À prop.</span></button>
+  <button id="share-btn"><i class="fa-brands fa-whatsapp"></i><span>Partag.</span></button>
 </footer>
 
 <div id="modal-ann" class="modal"><div class="box"><span class="close">&times;</span><h3>Annonces</h3><p id="announcement-text">—</p></div></div>
 <div id="modal-events" class="modal"><div class="box"><span class="close">&times;</span><h3>Événements</h3><div id="events-list">—</div></div></div>
-<div id="modal-names" class="modal"><div class="box"><span class="close">&times;</span><h3 id="names-header">Les 99 Noms d'Allah</h3><ul id="names-list"></ul></div></div>
+
+<div id="modal-names" class="modal">
+  <div class="box">
+    <span class="close">&times;</span>
+    <h3 id="names-header">Les 99 Noms d'Allah</h3>
+    <div class="small" style="margin:-6px 0 10px">Arabe + phonétique (entre parenthèses) + sens</div>
+    <ul id="names-list"></ul>
+  </div>
+</div>
+
+<div id="modal-tasbih" class="modal">
+  <div class="box">
+    <span class="close">&times;</span>
+    <h3>📿 Tasbih</h3>
+    <div class="tasbih-card">
+      <div class="tasbih-count" id="tasbih-count">0</div>
+      <div class="tasbih-actions">
+        <button class="btn btn-primary" id="tasbih-plus"><i class="fa-solid fa-plus"></i> +1</button>
+        <button class="btn btn-ghost" id="tasbih-minus"><i class="fa-solid fa-minus"></i> -1</button>
+        <button class="btn" id="tasbih-reset" style="background:#ef4444;color:#fff"><i class="fa-solid fa-rotate"></i> Reset</button>
+      </div>
+      <div class="small" style="margin-top:10px" id="tasbih-hint">Astuce: vibration légère à chaque +1 (si supporté).</div>
+    </div>
+  </div>
+</div>
+
 <div id="modal-about" class="modal"><div class="box"><span class="close">&times;</span><h3>À propos</h3><p><strong>Contact :</strong> <span id="about-contact-name">—</span><br><strong>Téléphone :</strong> <span id="about-contact-phone">—</span></p></div></div>
 
 <div id="modal-admin" class="modal" role="dialog" aria-modal="true">
@@ -215,15 +229,13 @@
       <div><label>&nbsp;</label><button id="del-mosque" class="save" style="padding:10px 12px; background:#ef4444">Supprimer</button></div>
     </div>
 
-    <div class="row" style="align-items:flex-end">
-      <div style="flex:1">
-        <label>Lien officiel (à partager)</label>
+    <div class="admin-link">
+      <label>Lien officiel de la mosquée</label>
+      <div class="row" style="align-items:center">
         <input id="adm-link" readonly/>
+        <button id="adm-copy-link" class="btn btn-primary" style="white-space:nowrap">Copier</button>
       </div>
-      <div>
-        <label>&nbsp;</label>
-        <button id="adm-copy-link" class="save" style="padding:10px 12px; background:#2f7d6d">Copier</button>
-      </div>
+      <div class="small">Ce lien verrouille la mosquée pour le public : <code>/?m=ID</code></div>
     </div>
 
     <label>Nom de la mosquée</label><input id="adm-name"/>
@@ -264,14 +276,7 @@
     </div>
     <label>Offsets (min) Fajr,Chourouk,Dhuhr,Asr,Maghrib,Isha</label><input id="adm-offsets" placeholder="0,0,0,0,0,0"/>
 
-    <div id="advanced-block" style="display:none; border-top:1px dashed #e5e7eb; margin-top:12px; padding-top:10px">
-      <h3>Options avancées</h3>
-      <label>URL audio Adhan (mp3)</label><input id="adm-adhan-url" placeholder="https://…/adhan.mp3"/>
-      <label>Plage silencieuse (HH:MM–HH:MM)</label><input id="adm-quiet" placeholder="22:00-05:00"/>
-      <label><input type="checkbox" id="adm-allow-fajr"/> Autoriser Fajr pendant la plage silencieuse</label>
-    </div>
-
-    <h3 style="margin-top:18px">Objectif & rapprochement</h3>
+    <h3 style="margin-top:18px">Objectif</h3>
     <div class="row">
       <div style="flex:1"><label>Objectif journalier (CFA)</label><input id="adm-goal" type="number" placeholder="100000"/></div>
     </div>
@@ -281,6 +286,1093 @@
   </div>
 </div>
 
-<script defer src="./app.js?v=2"></script>
+<script src="./app.js?v=3"></script>
 </body>
 </html>
+
+
+/* =========================
+   File: styles.css
+   ========================= */
+:root{
+  --sand:#f7f3ed; --sand-2:#efe8de; --ink:#0f172a; --muted:#667085;
+  --green:#2f7d6d; --green-2:#3f8f7e; --mint:#e7f3f0; --accent:#e4572e;
+  --card:#ffffff; --shadow:0 10px 24px rgba(0,0,0,.08); --radius:16px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:Poppins,system-ui,Segoe UI,Roboto; color:var(--ink);
+  background:linear-gradient(180deg,var(--sand),var(--sand-2));
+  min-height:100vh; display:flex; flex-direction:column; align-items:center;
+  padding:18px 14px 96px;
+}
+header,main{width:100%; max-width:520px}
+.card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow)}
+header{padding:14px; text-align:center; position:relative}
+
+#admin-button{
+  position:absolute; top:10px; right:10px;
+  width:42px; height:42px; border:none; border-radius:12px;
+  background:var(--green); color:#fff; display:grid; place-items:center; cursor:pointer
+}
+h1{margin:6px 0 2px; font-size:26px; color:var(--green); letter-spacing:.2px}
+.small{font-size:12px; color:var(--muted)}
+#current-time-container{display:inline-block; background:var(--green); color:#fff; padding:10px 16px; border-radius:14px; margin:10px 0}
+#current-time{font-size:30px; font-weight:900}
+#next-prayer{background:var(--mint); border-radius:14px; padding:12px 12px; margin-top:8px}
+#next-prayer .name{color:var(--green-2); font-weight:900}
+#next-prayer .timer{color:var(--accent); font-weight:900; margin-left:8px}
+
+.sel-row{display:flex; justify-content:center; gap:8px; flex-wrap:wrap; margin:10px 0}
+.sel-row select{
+  width:min(100%,360px);
+  padding:10px 12px;
+  border:1px solid #e5e7eb; border-radius:12px;
+  font-weight:800;
+  background:#fff;
+}
+
+.list{margin-top:10px}
+.row{display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #f0f2f6}
+.row:last-child{border-bottom:none}
+.row.current{background:#eef7f4; border-left:5px solid var(--green)}
+.name{font-weight:700}
+.time{font-weight:900; color:var(--green)}
+
+.duo{margin-top:12px; padding:14px}
+.duo-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.duo-item{background:#f4faf8; border-radius:14px; padding:12px; text-align:center; box-shadow:inset 0 0 0 1px #e3f0eb}
+.duo-title{font-weight:900; color:#1f5e53}
+.duo-time{font-weight:900; font-size:20px; margin-top:6px; color:#134e42}
+@media (max-width:430px){.duo-grid{grid-template-columns:1fr}}
+
+.ramadan{
+  background:linear-gradient(180deg, rgba(47,125,109,.95), rgba(47,125,109,.90));
+  color:#fff;
+}
+.ramadan .small{color:rgba(255,255,255,.82)}
+.ramadan .duo-item{background:rgba(255,255,255,.08); box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+.ramadan .duo-title{color:rgba(255,255,255,.92)}
+.ramadan .duo-time{color:#fff; font-size:28px}
+.ramadan-head{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap}
+.ramadan-title{font-weight:900; font-size:18px}
+.ramadan-day{font-weight:900; font-size:22px}
+.ramadan-pill{
+  display:flex; justify-content:space-between; align-items:center;
+  border-radius:14px; padding:10px 12px;
+  background:rgba(0,0,0,.12);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);
+}
+#ramadan-fasting{font-weight:900}
+
+.don-public{margin-top:12px; padding:14px}
+.don-public h3{margin:0 0 8px; color:#1f5e53; font-size:16px; text-align:center}
+.don-cat{background:#f8fffd;border:1px dashed #bfe4db;border-radius:14px;padding:10px 10px;margin:8px 0 10px}
+.don-cat-row{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:8px}
+.don-cat-row select{flex:1; padding:10px; border:1px solid #e5e7eb; border-radius:12px; font-weight:800}
+.don-lines{list-style:none; padding:0; margin:0}
+.don-lines li{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-top:1px solid #eef2f7}
+.don-lines li:first-child{border-top:none}
+.don-cta{display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:10px}
+
+.btn{padding:10px 12px; border:none; border-radius:12px; cursor:pointer; font-weight:900}
+.btn-primary{background:var(--green); color:#fff}
+.btn-ghost{background:#fff; color:var(--green); border:1px solid #cfe7e1}
+
+.don-admin{margin-top:12px; padding:14px; display:none}
+.don-admin-title{margin:0 0 8px; color:#1f5e53}
+.kpis{display:flex; justify-content:space-between; gap:10px; margin-top:8px; font-weight:900; flex-wrap:wrap}
+.kpis div{background:#f8fffd; border:1px dashed #bfe4db; border-radius:12px; padding:8px 10px}
+.kpis-3{gap:8px}
+.progress{height:10px; background:#e8f4f1; border-radius:999px; overflow:hidden}
+.progress>span{display:block; height:100%; background:#16a34a; width:0%}
+.add-don{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+.add-don input,.add-don select{padding:10px; border:1px solid #e5e7eb; border-radius:12px}
+.add-don .btn{padding:10px 14px}
+.table{width:100%; border-collapse:collapse; margin-top:8px}
+.table th,.table td{border-bottom:1px solid #eef2f7; padding:8px; font-size:13px}
+.badge{padding:3px 8px; border-radius:999px; font-weight:900; font-size:11px}
+.b-ok{background:#dcfce7; color:#14532d}
+.b-p{background:#fff7ed; color:#7c2d12}
+.b-no{background:#fee2e2; color:#7f1d1d}
+
+.qibla-lite{margin-top:12px; padding:14px}
+.qibla-head{display:flex; justify-content:space-between; align-items:center; gap:10px}
+.qibla-lite h3{margin:0; color:#1f5e53}
+
+footer{
+  position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+  width:100%; max-width:560px; background:var(--card);
+  box-shadow:0 -10px 18px rgba(0,0,0,.08);
+  padding:6px 6px; display:flex; justify-content:space-around;
+  z-index:50; border-top-left-radius:16px; border-top-right-radius:16px
+}
+footer button{
+  background:none; border:none; color:var(--green);
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  font-weight:900; cursor:pointer; min-width:52px
+}
+footer i{font-size:20px}
+footer span{font-size:12px}
+@media (max-width:390px){
+  footer span{font-size:11px}
+  footer i{font-size:19px}
+}
+
+.notif{
+  position:absolute; top:-4px; right:-8px; background:var(--accent); color:#fff;
+  border-radius:999px; padding:1px 6px; font-size:11px; display:none
+}
+.modal{display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); padding:40px 14px; z-index:100}
+.modal .box{background:#fff; border-radius:16px; padding:18px; max-width:560px; margin:0 auto; position:relative; max-height:90vh; overflow:auto}
+.close{position:absolute; right:10px; top:8px; font-size:24px; cursor:pointer}
+
+#names-list{max-height:70vh; overflow-y:auto; padding-right:6px; list-style:none; padding-left:0}
+#names-list li{display:grid; grid-template-columns:1fr auto; gap:8px; padding:10px 0; border-bottom:1px solid #eef2f7}
+#names-list li:last-child{border-bottom:none}
+.names-ar{font-weight:900; color:#1f5e53}
+.names-tr{font-weight:800; color:#0f172a}
+.names-meaning{grid-column:1 / -1; color:#667085; font-size:12px; margin-top:4px}
+
+.admin label{display:block; font-weight:900; color:#1f5e53; margin-top:12px}
+.admin input,.admin select,.admin textarea{width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:12px; font-weight:700}
+.admin .row{display:flex; gap:10px; flex-wrap:wrap}
+.save{margin-top:14px; width:100%; padding:12px; border:none; border-radius:12px; background:var(--accent); color:#fff; font-weight:900; cursor:pointer}
+.status{margin-top:10px; padding:10px 12px; border-radius:12px; color:#fff; display:none}
+
+.admin-link code{background:#f3f4f6;padding:2px 6px;border-radius:8px}
+
+.tasbih-card{background:#f8fffd;border:1px dashed #bfe4db;border-radius:16px;padding:14px}
+.tasbih-count{font-size:56px;font-weight:900;color:var(--green);text-align:center;letter-spacing:1px}
+.tasbih-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+
+
+/* =========================
+   File: app.js
+   ========================= */
+const ADMIN_PASSWORD = '1234';
+const SUPER_ADMIN_PASSWORD = '9999';
+let SESSION_ROLE = 'guest';
+
+const PRAYER_NAMES = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+const DISPLAY = {
+  Fajr: { local: 'Souba', ar: 'Fajr' },
+  Dhuhr: { local: 'Tisbar', ar: 'Dhuhr' },
+  Asr: { local: 'Takusan', ar: 'Asr' },
+  Maghrib: { local: 'Timis', ar: 'Maghrib' },
+  Isha: { local: 'Guéwé', ar: 'Isha' },
+};
+
+const WEEKDAYS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+const MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+const CITY_COORDS = {
+  Medina: { lat: 14.673, lon: -17.447 },
+  Dakar: { lat: 14.7167, lon: -17.4677 },
+  Pikine: { lat: 14.75, lon: -17.37 },
+  Guédiawaye: { lat: 14.7833, lon: -17.4167 },
+  Rufisque: { lat: 14.7236, lon: -17.2658 },
+  Thiaroye: { lat: 14.7431, lon: -17.3325 },
+  Yoff: { lat: 14.767, lon: -17.47 },
+  'Parcelles Assainies': { lat: 14.7398, lon: -17.447 },
+  "M'bao": { lat: 14.72, lon: -17.26 },
+};
+
+const DEFAULT_MOSQUES = [
+  { id: 'bene-tally', name: 'Bene Tally', city: 'Medina', wave: '772682103', orange: '772682103', contact: 'Imam Diallo', phone: '+221772682103', jumua: '13:30', ann: 'Bienvenue à Bene Tally.', events: [{ title: 'Cours de Fiqh', date: 'Mardi après Isha' }], method: 3, school: 0, offsets: [0, 0, 0, 0, 0, 0] },
+  { id: 'medina-centre', name: 'Medina Centre', city: 'Dakar', wave: '770000000', orange: '780000000', contact: 'Imam Ndiaye', phone: '+221780000000', jumua: '14:00', ann: 'Annonce importante pour la Medina.', events: [{ title: 'Cercle de Coran', date: 'Samedi après Fajr' }], method: 3, school: 0, offsets: [0, 0, 0, 0, 0, 0] },
+];
+
+const MOCK = { Fajr: '05:45', Sunrise: '07:00', Dhuhr: '13:30', Asr: '16:45', Maghrib: '19:05', Isha: '20:30' };
+
+// Ramadan a commencé le 18 février (tu peux ajuster l’année si besoin)
+const RAMADAN_START_DATE = '2026-02-18';
+const RAMADAN_TOTAL_DAYS = 30;
+
+const KAABA = { lat: 21.4225, lon: 39.8262 };
+
+const DON_CATEGORIES = {
+  Sadaqa: 'Sadaqa : don libre, pour l’entraide.',
+  Zakat: 'Zakat : aumône obligatoire (selon conditions).',
+  Travaux: 'Travaux / Entretien : eau, électricité, réparation, nettoyage…',
+};
+
+const el = (id) => document.getElementById(id);
+
+let timingsData = null;
+let lastAlertShown = '';
+let playedFor = '';
+
+function showStatus(msg, bg) {
+  const node = el('status');
+  if (!node) return;
+  node.textContent = msg;
+  node.style.background = bg || '#2f7d6d';
+  node.style.display = 'block';
+  setTimeout(() => { node.style.display = 'none'; }, 3000);
+}
+
+function fmt(ms) {
+  if (ms < 0) return '00:00:00';
+  const t = Math.floor(ms / 1000);
+  const h = Math.floor(t / 3600) % 24;
+  const m = Math.floor((t % 3600) / 60);
+  const s = t % 60;
+  return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function parseHM(s) {
+  const [h, m] = String(s || '').split(':').map((x) => parseInt(x, 10));
+  return { h: Number.isFinite(h) ? h : 0, m: Number.isFinite(m) ? m : 0 };
+}
+
+function buildTuneParam(offsets) {
+  const a = offsets && offsets.length === 6 ? offsets : [0, 0, 0, 0, 0, 0];
+  return a.join(',');
+}
+
+function loadMosques() {
+  let arr = JSON.parse(localStorage.getItem('mosques') || 'null');
+  if (!arr || !arr.length) {
+    arr = DEFAULT_MOSQUES;
+    localStorage.setItem('mosques', JSON.stringify(arr));
+    localStorage.setItem('currentMosqueId', arr[0].id);
+  }
+  return arr;
+}
+
+function saveMosques(arr) { localStorage.setItem('mosques', JSON.stringify(arr)); }
+
+function getCurrentMosque() {
+  const arr = loadMosques();
+  const id = localStorage.getItem('currentMosqueId') || arr[0].id;
+  return arr.find((m) => m.id === id) || arr[0];
+}
+
+function setCurrentMosque(id) { localStorage.setItem('currentMosqueId', id); }
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+function ymKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function isoDay(d = new Date()) { return d.toISOString().slice(0, 10); }
+
+function getUrlMosqueId() {
+  const u = new URL(window.location.href);
+  const m = (u.searchParams.get('m') || '').trim();
+  return m || null;
+}
+
+function getBaseUrl() {
+  const u = new URL(window.location.href);
+  return `${u.origin}${u.pathname}`;
+}
+
+function officialLinkForMosqueId(id) {
+  const base = getBaseUrl();
+  return `${base}?m=${encodeURIComponent(id)}`;
+}
+
+function applyMosqueLockFromUrl() {
+  const mId = getUrlMosqueId();
+  if (!mId) return false;
+
+  const mosques = loadMosques();
+  const found = mosques.find((x) => x.id === mId);
+  if (!found) return false;
+
+  setCurrentMosque(found.id);
+  const wrap = el('mosque-selector-wrap');
+  if (wrap) wrap.style.display = 'none';
+  return true;
+}
+
+function updateClock() {
+  const n = new Date();
+  el('current-time').textContent = [n.getHours(), n.getMinutes(), n.getSeconds()].map((v) => String(v).padStart(2, '0')).join(':');
+  el('gregorian-date').textContent = `${WEEKDAYS[n.getDay()]} ${n.getDate()} ${MONTHS[n.getMonth()]} ${n.getFullYear()}`;
+}
+
+function populateMosqueSelector() {
+  const arr = loadMosques();
+  const sel = el('mosque-selector');
+  sel.innerHTML = '';
+  arr.forEach((m) => {
+    const o = document.createElement('option');
+    o.value = m.id;
+    o.textContent = m.name;
+    sel.appendChild(o);
+  });
+  sel.value = getCurrentMosque().id;
+
+  sel.onchange = (e) => {
+    setCurrentMosque(e.target.value);
+    fetchTimings();
+  };
+}
+
+function renderEvents() {
+  const m = getCurrentMosque();
+  const box = el('events-list');
+  const events = Array.isArray(m.events) ? m.events : [];
+  if (!events.length) { box.textContent = '—'; return; }
+
+  const wrap = document.createElement('div');
+  wrap.style.display = 'grid';
+  wrap.style.gap = '8px';
+
+  events.forEach((ev) => {
+    const item = document.createElement('div');
+    item.style.border = '1px solid #eef2f7';
+    item.style.borderRadius = '12px';
+    item.style.padding = '10px 12px';
+    item.innerHTML = `<div style="font-weight:900;color:#1f5e53">${escapeHtml(ev.title || '')}</div>
+                      <div class="small">${escapeHtml(ev.date || '')}</div>`;
+    wrap.appendChild(item);
+  });
+
+  box.innerHTML = '';
+  box.appendChild(wrap);
+}
+
+function renderRamadan() {
+  const card = el('ramadan-card');
+  if (!card) return;
+
+  const start = new Date(`${RAMADAN_START_DATE}T00:00:00`);
+  const now = new Date();
+  const msDay = 24 * 60 * 60 * 1000;
+  const dayIndex = Math.floor((now - start) / msDay) + 1;
+
+  if (dayIndex < 1 || dayIndex > RAMADAN_TOTAL_DAYS) {
+    card.style.display = 'none';
+    return;
+  }
+
+  const left = RAMADAN_TOTAL_DAYS - dayIndex;
+  const fajr = timingsData?.Fajr || '--:--';
+  const mag = timingsData?.Maghrib || '--:--';
+
+  el('ramadan-sub').textContent = `${dayIndex} Ramadan • ${el('gregorian-date').textContent}`;
+  el('ramadan-day').textContent = `Jour ${dayIndex}/${RAMADAN_TOTAL_DAYS}`;
+  el('ramadan-left').textContent = left === 0 ? 'Dernier jour' : `${left} j restants`;
+
+  el('ramadan-suhoor').textContent = fajr;
+  el('ramadan-iftar').textContent = mag;
+
+  const dur = fastingDuration(fajr, mag);
+  el('ramadan-fasting').textContent = dur ? dur : '—';
+
+  card.style.display = 'block';
+}
+
+function fastingDuration(fajr, maghrib) {
+  const a = String(fajr).split(':').map((x) => parseInt(x, 10));
+  const b = String(maghrib).split(':').map((x) => parseInt(x, 10));
+  if (a.length < 2 || b.length < 2 || a.some(Number.isNaN) || b.some(Number.isNaN)) return null;
+
+  const d1 = new Date(); d1.setHours(a[0], a[1], 0, 0);
+  const d2 = new Date(); d2.setHours(b[0], b[1], 0, 0);
+  let diff = d2 - d1;
+  if (diff < 0) diff += 24 * 60 * 60 * 1000;
+
+  const h = Math.floor(diff / 3600000);
+  const m = Math.round((diff % 3600000) / 60000);
+  return `${h}h ${String(m).padStart(2, '0')}m`;
+}
+
+function playBeep(duration = 600, freq = 880) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = freq;
+    o.connect(g);
+    g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
+    o.start();
+    setTimeout(() => {
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.05);
+      o.stop();
+      ctx.close();
+    }, duration);
+  } catch {}
+}
+
+function playChime() { playBeep(700, 740); navigator.vibrate && navigator.vibrate(120); }
+function playAdhan() { playBeep(1200, 660); }
+
+function updateNextCountdown() {
+  if (!timingsData) {
+    el('next-prayer-name').textContent = '—';
+    el('countdown').textContent = '--:--:--';
+    return;
+  }
+
+  const now = new Date();
+  document.querySelectorAll('.list .row').forEach((r) => r.classList.remove('current'));
+
+  const p = {};
+  PRAYER_NAMES.forEach((k) => {
+    const parts = String(timingsData[k] || '').split(':');
+    if (parts.length >= 2) {
+      const d = new Date();
+      d.setHours(Number(parts[0]), Number(parts[1]), 0, 0);
+      p[k] = d;
+    }
+  });
+
+  const m = getCurrentMosque();
+  if (now.getDay() === 5 && m.jumua) {
+    const hm = parseHM(m.jumua || '13:30');
+    const d = new Date();
+    d.setHours(hm.h, hm.m, 0, 0);
+    p.Dhuhr = d;
+  }
+
+  let name = '';
+  let time = null;
+
+  for (const k of PRAYER_NAMES) {
+    const d = p[k];
+    if (d && now < d) { name = k; time = d; break; }
+  }
+
+  if (!name) {
+    name = 'Fajr';
+    const t = String(timingsData.Fajr || '05:45').split(':').map(Number);
+    time = new Date();
+    time.setDate(time.getDate() + 1);
+    time.setHours(t[0] || 5, t[1] || 45, 0, 0);
+  }
+
+  el('next-prayer-name').textContent = `${DISPLAY[name].local.toUpperCase()} (${DISPLAY[name].ar})`;
+  el('countdown').textContent = fmt(time - now);
+
+  const item = el(`${name.toLowerCase()}-item`);
+  if (item) item.classList.add('current');
+
+  const delta = time - now;
+  const five = 5 * 60 * 1000;
+
+  if (delta > 0 && delta <= five && lastAlertShown !== name) {
+    playChime();
+    lastAlertShown = name;
+    showStatus(`Dans 5 min : ${DISPLAY[name].local}.`, '#1f5e53');
+  }
+
+  if (delta <= 900 && playedFor !== name) {
+    playAdhan();
+    playedFor = name;
+  }
+
+  if (delta > 1500 && name === playedFor) playedFor = '';
+}
+
+async function fetchTimings() {
+  const m = getCurrentMosque();
+  const base = CITY_COORDS[m.city] || CITY_COORDS.Medina;
+
+  const method = (m.method != null) ? m.method : 3;
+  const school = (m.school != null) ? m.school : 0;
+  const tune = buildTuneParam(m.offsets || [0, 0, 0, 0, 0, 0]);
+
+  const url = `https://api.aladhan.com/v1/timings?latitude=${base.lat}&longitude=${base.lon}&method=${method}&school=${school}&tune=${tune}`;
+
+  const key = `cache_${m.id}_${new Date().toDateString()}`;
+  const cached = localStorage.getItem(key);
+  let loaded = false;
+
+  if (cached) { displayAll(JSON.parse(cached)); loaded = true; }
+
+  try {
+    const r = await fetch(url);
+    const j = await r.json();
+    if (j && j.data) {
+      localStorage.setItem(key, JSON.stringify(j.data));
+      displayAll(j.data);
+    } else {
+      throw new Error('bad');
+    }
+  } catch {
+    showStatus(loaded ? 'Hors-ligne – cache.' : 'Données par défaut affichées.', loaded ? '#ca8a04' : '#e11d48');
+    if (!loaded) displayAll({ timings: MOCK });
+  }
+}
+
+function displayAll(data) {
+  timingsData = (data && data.timings) ? data.timings : MOCK;
+  const m = getCurrentMosque();
+
+  el('mosque-name').textContent = m.name;
+  el('wave-number').textContent = m.wave || '—';
+  el('orange-number').textContent = m.orange || '—';
+  el('cash-hint').textContent = m.name || 'Mosquée';
+  el('about-contact-name').textContent = m.contact || '—';
+  el('about-contact-phone').textContent = m.phone || '—';
+
+  PRAYER_NAMES.forEach((k) => {
+    el(`${k.toLowerCase()}-name`).textContent = `${DISPLAY[k].local} (${DISPLAY[k].ar})`;
+    el(`${k.toLowerCase()}-time`).textContent = timingsData[k] || '--:--';
+  });
+
+  el('shuruq-time').textContent = timingsData.Sunrise || '--:--';
+  el('jumua-time').textContent = m.jumua || '13:30';
+
+  if (data?.date?.hijri) {
+    el('hijri-date').textContent = `${data.date.hijri.day} ${data.date.hijri.month.ar} ${data.date.hijri.year} AH`;
+  } else {
+    el('hijri-date').textContent = '—';
+  }
+
+  const ann = String(m.ann || '').trim();
+  el('announcement-text').textContent = ann || 'Aucune annonce.';
+  const seenKey = `annSeen_${m.id}_${todayKey()}`;
+  el('notif').style.display = (ann && !localStorage.getItem(seenKey)) ? 'inline-block' : 'none';
+
+  updateNextCountdown();
+  renderDonation();
+  renderDonTable();
+  renderEvents();
+  renderRamadan();
+  setupQiblaMapsLink();
+}
+
+/* WhatsApp */
+function openWhatsApp(to, msg) {
+  window.open(`https://wa.me/${encodeURIComponent(to)}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+/* Don public category */
+function currentPublicDonCategory() {
+  return el('don-public-category')?.value || 'Sadaqa';
+}
+function updateDonPublicDesc() {
+  const c = currentPublicDonCategory();
+  el('don-public-desc').textContent = DON_CATEGORIES[c] || '—';
+}
+
+/* Donations */
+function kGoal(m) { return `dong_${m.id}`; }
+function getGoal(m) { const g = localStorage.getItem(kGoal(m)); return g ? parseInt(g, 10) : 100000; }
+function setGoal(m, val) { localStorage.setItem(kGoal(m), String(Math.max(0, parseInt(val, 10) || 0))); }
+
+function kList(m) { return `donlist_${m.id}_${isoDay()}`; }
+function kMonthSum(m) { return `donm_${m.id}_${ymKey()}`; }
+function loadList(m) { return JSON.parse(localStorage.getItem(kList(m)) || '[]'); }
+function saveList(m, list) { localStorage.setItem(kList(m), JSON.stringify(list)); }
+function monthSum(m) { return parseInt(localStorage.getItem(kMonthSum(m)) || '0', 10); }
+function setMonthSum(m, v) { localStorage.setItem(kMonthSum(m), String(Math.max(0, parseInt(v, 10) || 0))); }
+
+function loadWeekConfirmed(m) {
+  const now = new Date();
+  const sums = { total: 0, Zakat: 0, Sadaqa: 0, Travaux: 0 };
+  for (let i = 0; i < 7; i += 1) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    const key = `donlist_${m.id}_${isoDay(d)}`;
+    const list = JSON.parse(localStorage.getItem(key) || '[]');
+    list.filter((x) => x.status === 'ok').forEach((x) => {
+      sums.total += x.amount || 0;
+      const cat = x.category || 'Sadaqa';
+      if (sums[cat] != null) sums[cat] += x.amount || 0;
+    });
+  }
+  return sums;
+}
+
+function confirmedSumToday() {
+  const m = getCurrentMosque();
+  return loadList(m).filter((x) => x.status === 'ok').reduce((s, x) => s + (x.amount || 0), 0);
+}
+
+function renderDonation() {
+  const m = getCurrentMosque();
+  const goal = getGoal(m);
+  const day = confirmedSumToday();
+  const month = monthSum(m);
+  const week = loadWeekConfirmed(m);
+
+  el('don-goal').textContent = goal.toLocaleString('fr-FR');
+  el('don-today').textContent = day.toLocaleString('fr-FR');
+  el('don-month').textContent = month.toLocaleString('fr-FR');
+  el('don-week').textContent = week.total.toLocaleString('fr-FR');
+
+  el('don-zakat').textContent = week.Zakat.toLocaleString('fr-FR');
+  el('don-sadaqa').textContent = week.Sadaqa.toLocaleString('fr-FR');
+  el('don-travaux').textContent = week.Travaux.toLocaleString('fr-FR');
+
+  const left = Math.max(0, goal - day);
+  const p = goal ? Math.min(100, Math.round((day * 100) / goal)) : 0;
+  el('don-bar').style.width = `${p}%`;
+}
+
+function renderDonTable() {
+  const m = getCurrentMosque();
+  const tb = document.querySelector('#don-table tbody');
+  tb.innerHTML = '';
+
+  loadList(m).forEach((r) => {
+    const tr = document.createElement('tr');
+    const st = r.status === 'ok'
+      ? '<span class="badge b-ok">Confirmé</span>'
+      : (r.status === 'no'
+        ? '<span class="badge b-no">Annulé</span>'
+        : '<span class="badge b-p">En attente</span>');
+
+    tr.innerHTML = `<td>${new Date(r.ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</td>
+      <td><strong>${(r.amount || 0).toLocaleString('fr-FR')}</strong></td>
+      <td>${escapeHtml(r.method || '')}</td>
+      <td>${escapeHtml(r.category || 'Sadaqa')}</td>
+      <td>${escapeHtml(r.ref || '')}</td>
+      <td>${st}</td>
+      <td style="white-space:nowrap">
+        <button data-act="ok" data-id="${r.id}" class="btn btn-primary" style="padding:6px 10px">OK</button>
+        <button data-act="no" data-id="${r.id}" class="btn" style="padding:6px 10px; background:#ef4444; color:#fff">X</button>
+      </td>`;
+    tb.appendChild(tr);
+  });
+
+  tb.querySelectorAll('button[data-act]').forEach((b) => {
+    b.onclick = () => setEntryStatus(b.dataset.id, b.dataset.act);
+  });
+}
+
+function addDonationEntry({ amount, method, category, ref }) {
+  const m = getCurrentMosque();
+  const list = loadList(m);
+  const id = Date.now().toString(36);
+
+  list.unshift({
+    id,
+    ts: new Date().toISOString(),
+    amount: Number(amount) || 0,
+    method: method || 'Wave',
+    category: category || 'Sadaqa',
+    ref: ref || '',
+    status: 'pending',
+  });
+
+  saveList(m, list);
+  renderDonTable();
+  renderDonation();
+}
+
+function setEntryStatus(id, newStatus) {
+  const m = getCurrentMosque();
+  const list = loadList(m);
+  const i = list.findIndex((x) => x.id === id);
+  if (i < 0) return;
+
+  const wasOk = list[i].status === 'ok';
+  list[i].status = newStatus;
+  saveList(m, list);
+
+  if (newStatus === 'ok' && !wasOk) setMonthSum(m, monthSum(m) + (list[i].amount || 0));
+  if (wasOk && newStatus !== 'ok') setMonthSum(m, monthSum(m) - (list[i].amount || 0));
+
+  renderDonTable();
+  renderDonation();
+}
+
+/* Modals */
+function openModal(id) { el(id).style.display = 'block'; }
+function closeAll() { document.querySelectorAll('.modal').forEach((m) => { m.style.display = 'none'; }); }
+function bindModals() {
+  document.querySelectorAll('.modal .close').forEach((x) => x.addEventListener('click', closeAll));
+  window.addEventListener('click', (e) => {
+    if (e.target && e.target.classList && e.target.classList.contains('modal')) closeAll();
+  });
+}
+
+/* Qibla (Maps only) */
+function computeBearing(fromLat, fromLon, toLat, toLon) {
+  const toRad = (d) => (d * Math.PI) / 180;
+  const toDeg = (r) => (r * 180) / Math.PI;
+  const normDeg = (d) => ((d % 360) + 360) % 360;
+
+  const φ1 = toRad(fromLat);
+  const φ2 = toRad(toLat);
+  const Δλ = toRad(toLon - fromLon);
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return normDeg(toDeg(Math.atan2(y, x)));
+}
+
+function setupQiblaMapsLink() {
+  const m = getCurrentMosque();
+  const base = CITY_COORDS[m.city] || CITY_COORDS.Medina;
+
+  el('qibla-maps').onclick = async () => {
+    const open = (lat, lon) => {
+      const origin = `${lat},${lon}`;
+      const dest = `${KAABA.lat},${KAABA.lon}`;
+      window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}`, '_blank');
+    };
+
+    if (!navigator.geolocation) {
+      el('qibla-status').textContent = `GPS indisponible. Mode ville (${m.city}).`;
+      return open(base.lat, base.lon);
+    }
+
+    el('qibla-status').textContent = 'Localisation…';
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const b = computeBearing(lat, lon, KAABA.lat, KAABA.lon);
+        el('qibla-status').textContent = `OK. Direction approximative: ${Math.round(b)}° (Maps).`;
+        open(lat, lon);
+      },
+      () => {
+        el('qibla-status').textContent = `Permission refusée. Mode ville (${m.city}).`;
+        open(base.lat, base.lon);
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
+    );
+  };
+
+  el('qibla-status').textContent = 'Utilise Google Maps (plus fiable sur mobile).';
+}
+
+/* Footer */
+function setupFooter() {
+  el('events-btn').onclick = () => { renderEvents(); openModal('modal-events'); };
+  el('announce-btn').onclick = () => {
+    openModal('modal-ann');
+    const m = getCurrentMosque();
+    localStorage.setItem(`annSeen_${m.id}_${todayKey()}`, '1');
+    el('notif').style.display = 'none';
+  };
+  el('about-btn').onclick = () => openModal('modal-about');
+  el('names-btn').onclick = () => { renderNames99(); openModal('modal-names'); };
+  el('tasbih-btn').onclick = () => openModal('modal-tasbih');
+  el('share-btn').onclick = () => {
+    const m = getCurrentMosque();
+    const text = `🕌 ${m.name}\n${el('gregorian-date').textContent}\n\nFajr: ${el('fajr-time').textContent}\nDhuhr: ${el('dhuhr-time').textContent}\nAsr: ${el('asr-time').textContent}\nMaghrib: ${el('maghrib-time').textContent}\nIsha: ${el('isha-time').textContent}\n\n${location.href}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+}
+
+/* Don buttons */
+function setupDonButtons() {
+  el('btn-wave').onclick = () => {
+    const m = getCurrentMosque();
+    const cat = currentPublicDonCategory();
+    openWhatsApp(m.phone || '', `Salam, je souhaite faire un don via *Wave Money*.\nCatégorie : *${cat}*\nMontant : [à renseigner] CFA\nNuméro Wave : ${m.wave}\nMosquée : ${m.name}\nBarakAllahou fik.`);
+  };
+
+  el('btn-orange').onclick = () => {
+    const m = getCurrentMosque();
+    const cat = currentPublicDonCategory();
+    openWhatsApp(m.phone || '', `Salam, je souhaite faire un don via *Orange Money*.\nCatégorie : *${cat}*\nMontant : [à renseigner] CFA\nNuméro Orange : ${m.orange}\nMosquée : ${m.name}\nBarakAllahou fik.`);
+  };
+
+  el('btn-claimed').onclick = () => {
+    const m = getCurrentMosque();
+    const cat = currentPublicDonCategory();
+    openWhatsApp(m.phone || '', `Salam, *j’ai donné* [montant] CFA via [Wave/Orange/Espèces].\nCatégorie : *${cat}*\nRéférence : [collez le reçu]\nMosquée : ${m.name}`);
+  };
+
+  el('don-public-category').onchange = updateDonPublicDesc;
+  updateDonPublicDesc();
+}
+
+/* Admin */
+function populateCitySelect(select) {
+  select.innerHTML = '';
+  Object.keys(CITY_COORDS).forEach((c) => {
+    const o = document.createElement('option');
+    o.value = c;
+    o.textContent = c;
+    select.appendChild(o);
+  });
+}
+
+function fillAdminForm(id) {
+  const m = loadMosques().find((x) => x.id === id);
+  if (!m) return;
+
+  el('adm-name').value = m.name || '';
+  el('adm-city').value = m.city || 'Medina';
+  el('adm-wave').value = m.wave || '';
+  el('adm-orange').value = m.orange || '';
+  el('adm-contact').value = m.contact || '';
+  el('adm-phone').value = m.phone || '';
+  el('adm-jumua').value = m.jumua || '13:30';
+  el('adm-ann').value = m.ann || '';
+  el('adm-events').value = (m.events || []).map((e) => `${e.title} | ${e.date}`).join('\n');
+  el('adm-method').value = (m.method != null) ? m.method : 3;
+  el('adm-school').value = (m.school != null) ? m.school : 0;
+  el('adm-offsets').value = (m.offsets && m.offsets.length === 6 ? m.offsets : [0, 0, 0, 0, 0, 0]).join(',');
+  el('adm-goal').value = getGoal(m);
+
+  el('adm-link').value = officialLinkForMosqueId(m.id);
+}
+
+async function copyText(t) {
+  try {
+    await navigator.clipboard.writeText(t);
+    showStatus('Lien copié ✅');
+  } catch {
+    prompt('Copie le lien :', t);
+  }
+}
+
+function setupAdmin() {
+  el('admin-button').onclick = () => {
+    const pw = prompt('Code d’accès :');
+    if (pw === SUPER_ADMIN_PASSWORD) SESSION_ROLE = 'super';
+    else if (pw === ADMIN_PASSWORD) SESSION_ROLE = 'admin';
+    else return alert('Code incorrect.');
+
+    el('role-hint').textContent = SESSION_ROLE === 'super' ? 'Mode SUPER ADMIN' : 'Mode ADMIN';
+    el('don-admin').style.display = 'block';
+
+    populateCitySelect(el('adm-city'));
+    fillAdminForm(getCurrentMosque().id);
+
+    openModal('modal-admin');
+  };
+
+  el('adm-copy-link').onclick = () => copyText(el('adm-link').value);
+
+  el('save').onclick = () => {
+    const arr = loadMosques();
+    const cur = getCurrentMosque();
+    const idx = arr.findIndex((x) => x.id === cur.id);
+    if (idx < 0) return;
+
+    let offsets = el('adm-offsets').value.split(',').map((v) => parseInt(v.trim(), 10));
+    if (offsets.length !== 6 || offsets.some(Number.isNaN)) offsets = [0, 0, 0, 0, 0, 0];
+
+    arr[idx] = {
+      ...arr[idx],
+      name: el('adm-name').value.trim() || 'Mosquée',
+      city: el('adm-city').value,
+      wave: el('adm-wave').value.trim(),
+      orange: el('adm-orange').value.trim(),
+      contact: el('adm-contact').value.trim(),
+      phone: el('adm-phone').value.trim(),
+      jumua: el('adm-jumua').value || '13:30',
+      ann: el('adm-ann').value,
+      events: el('adm-events').value.split('\n').filter((l) => l.trim() !== '').map((l) => {
+        const [t, ...r] = l.split('|');
+        return { title: (t || '').trim(), date: (r.join('|') || '').trim() };
+      }),
+      method: parseInt(el('adm-method').value, 10),
+      school: parseInt(el('adm-school').value, 10),
+      offsets,
+    };
+
+    saveMosques(arr);
+    setGoal(getCurrentMosque(), el('adm-goal').value);
+
+    el('adm-link').value = officialLinkForMosqueId(cur.id);
+
+    closeAll();
+    fetchTimings();
+    showStatus('Enregistré.');
+  };
+}
+
+/* Tasbih */
+function tasbihKey() {
+  const m = getCurrentMosque();
+  return `tasbih_${m.id}`;
+}
+function getTasbihCount() {
+  return parseInt(localStorage.getItem(tasbihKey()) || '0', 10) || 0;
+}
+function setTasbihCount(v) {
+  localStorage.setItem(tasbihKey(), String(Math.max(0, v | 0)));
+  el('tasbih-count').textContent = String(getTasbihCount());
+}
+function setupTasbih() {
+  el('tasbih-count').textContent = String(getTasbihCount());
+
+  el('tasbih-plus').onclick = () => {
+    setTasbihCount(getTasbihCount() + 1);
+    navigator.vibrate && navigator.vibrate(25);
+  };
+  el('tasbih-minus').onclick = () => setTasbihCount(getTasbihCount() - 1);
+  el('tasbih-reset').onclick = () => setTasbihCount(0);
+}
+
+/* 99 Names (arabe + (phonétique) + sens) */
+const NAMES_99 = [
+  { ar: 'ٱللَّٰه', tr: '(Allah)', fr: 'Le Nom suprême' },
+  { ar: 'ٱلرَّحْمَٰن', tr: '(Ar-Rahman)', fr: 'Le Tout Miséricordieux' },
+  { ar: 'ٱلرَّحِيم', tr: '(Ar-Rahim)', fr: 'Le Très Miséricordieux' },
+  { ar: 'ٱلْمَلِك', tr: '(Al-Malik)', fr: 'Le Souverain' },
+  { ar: 'ٱلْقُدُّوس', tr: '(Al-Quddus)', fr: 'Le Saint' },
+  { ar: 'ٱلسَّلَام', tr: '(As-Salam)', fr: 'La Paix, la Source de paix' },
+  { ar: 'ٱلْمُؤْمِن', tr: '(Al-Mu’min)', fr: 'Le Garant' },
+  { ar: 'ٱلْمُهَيْمِن', tr: '(Al-Muhaymin)', fr: 'Le Protecteur' },
+  { ar: 'ٱلْعَزِيز', tr: '(Al-‘Aziz)', fr: 'Le Tout-Puissant' },
+  { ar: 'ٱلْجَبَّار', tr: '(Al-Jabbar)', fr: 'Le Contraignant' },
+  { ar: 'ٱلْمُتَكَبِّر', tr: '(Al-Mutakabbir)', fr: 'Le Superbe' },
+  { ar: 'ٱلْخَالِق', tr: '(Al-Khaliq)', fr: 'Le Créateur' },
+  { ar: 'ٱلْبَارِئ', tr: '(Al-Bari’)', fr: 'Le Producteur' },
+  { ar: 'ٱلْمُصَوِّر', tr: '(Al-Musawwir)', fr: 'Le Formateur' },
+  { ar: 'ٱلْغَفَّار', tr: '(Al-Ghaffar)', fr: 'Le Très Pardonneur' },
+  { ar: 'ٱلْقَهَّار', tr: '(Al-Qahhar)', fr: 'Le Dominateur' },
+  { ar: 'ٱلْوَهَّاب', tr: '(Al-Wahhab)', fr: 'Le Donateur' },
+  { ar: 'ٱلرَّزَّاق', tr: '(Ar-Razzaq)', fr: 'Le Pourvoyeur' },
+  { ar: 'ٱلْفَتَّاح', tr: '(Al-Fattah)', fr: 'L’Ouvreur' },
+  { ar: 'ٱلْعَلِيم', tr: '(Al-‘Alim)', fr: 'L’Omniscient' },
+  { ar: 'ٱلْقَابِض', tr: '(Al-Qabid)', fr: 'Celui qui retient' },
+  { ar: 'ٱلْبَاسِط', tr: '(Al-Basit)', fr: 'Celui qui étend' },
+  { ar: 'ٱلْخَافِض', tr: '(Al-Khafid)', fr: 'Celui qui abaisse' },
+  { ar: 'ٱلرَّافِع', tr: '(Ar-Rafi‘)', fr: 'Celui qui élève' },
+  { ar: 'ٱلْمُعِزّ', tr: '(Al-Mu‘izz)', fr: 'Celui qui honore' },
+  { ar: 'ٱلْمُذِلّ', tr: '(Al-Mudhill)', fr: 'Celui qui humilie' },
+  { ar: 'ٱلسَّمِيع', tr: '(As-Sami‘)', fr: 'L’Audient' },
+  { ar: 'ٱلْبَصِير', tr: '(Al-Basir)', fr: 'Le Clairvoyant' },
+  { ar: 'ٱلْحَكَم', tr: '(Al-Hakam)', fr: 'Le Juge' },
+  { ar: 'ٱلْعَدْل', tr: '(Al-‘Adl)', fr: 'Le Juste' },
+  { ar: 'ٱللَّطِيف', tr: '(Al-Latif)', fr: 'Le Subtil' },
+  { ar: 'ٱلْخَبِير', tr: '(Al-Khabir)', fr: 'Le Parfaitement Informé' },
+  { ar: 'ٱلْحَلِيم', tr: '(Al-Halim)', fr: 'Le Longanime' },
+  { ar: 'ٱلْعَظِيم', tr: '(Al-‘Azim)', fr: 'L’Immense' },
+  { ar: 'ٱلْغَفُور', tr: '(Al-Ghafur)', fr: 'Le Pardonneur' },
+  { ar: 'ٱلشَّكُور', tr: '(Ash-Shakur)', fr: 'Le Très Reconnaissant' },
+  { ar: 'ٱلْعَلِيّ', tr: '(Al-‘Ali)', fr: 'Le Très-Haut' },
+  { ar: 'ٱلْكَبِير', tr: '(Al-Kabir)', fr: 'Le Très Grand' },
+  { ar: 'ٱلْحَفِيظ', tr: '(Al-Hafiz)', fr: 'Le Gardien' },
+  { ar: 'ٱلْمُقِيت', tr: '(Al-Muqit)', fr: 'Le Nourricier' },
+  { ar: 'ٱلْحَسِيب', tr: '(Al-Hasib)', fr: 'Celui qui suffit' },
+  { ar: 'ٱلْجَلِيل', tr: '(Al-Jalil)', fr: 'Le Majestueux' },
+  { ar: 'ٱلْكَرِيم', tr: '(Al-Karim)', fr: 'Le Généreux' },
+  { ar: 'ٱلرَّقِيب', tr: '(Ar-Raqib)', fr: 'Le Vigilant' },
+  { ar: 'ٱلْمُجِيب', tr: '(Al-Mujib)', fr: 'Celui qui répond' },
+  { ar: 'ٱلْوَاسِع', tr: '(Al-Wasi‘)', fr: 'L’Immense' },
+  { ar: 'ٱلْحَكِيم', tr: '(Al-Hakim)', fr: 'Le Sage' },
+  { ar: 'ٱلْوَدُود', tr: '(Al-Wadud)', fr: 'Le Très Aimant' },
+  { ar: 'ٱلْمَجِيد', tr: '(Al-Majid)', fr: 'Le Glorieux' },
+  { ar: 'ٱلْبَاعِث', tr: '(Al-Ba‘ith)', fr: 'Celui qui ressuscite' },
+  { ar: 'ٱلشَّهِيد', tr: '(Ash-Shahid)', fr: 'Le Témoin' },
+  { ar: 'ٱلْحَقّ', tr: '(Al-Haqq)', fr: 'Le Vrai' },
+  { ar: 'ٱلْوَكِيل', tr: '(Al-Wakil)', fr: 'Le Garant' },
+  { ar: 'ٱلْقَوِيّ', tr: '(Al-Qawiyy)', fr: 'Le Fort' },
+  { ar: 'ٱلْمَتِين', tr: '(Al-Matin)', fr: 'Le Très Ferme' },
+  { ar: 'ٱلْوَلِيّ', tr: '(Al-Wali)', fr: 'Le Protecteur' },
+  { ar: 'ٱلْحَمِيد', tr: '(Al-Hamid)', fr: 'Le Digne de louange' },
+  { ar: 'ٱلْمُحْصِي', tr: '(Al-Muhsi)', fr: 'Celui qui dénombre' },
+  { ar: 'ٱلْمُبْدِئ', tr: '(Al-Mubdi’)', fr: 'Celui qui commence' },
+  { ar: 'ٱلْمُعِيد', tr: '(Al-Mu‘id)', fr: 'Celui qui refait' },
+  { ar: 'ٱلْمُحْيِي', tr: '(Al-Muhyi)', fr: 'Celui qui donne la vie' },
+  { ar: 'ٱلْمُمِيت', tr: '(Al-Mumit)', fr: 'Celui qui donne la mort' },
+  { ar: 'ٱلْحَيّ', tr: '(Al-Hayy)', fr: 'Le Vivant' },
+  { ar: 'ٱلْقَيُّوم', tr: '(Al-Qayyum)', fr: 'Celui qui subsiste par Lui-même' },
+  { ar: 'ٱلْوَاجِد', tr: '(Al-Wajid)', fr: 'Le Riche' },
+  { ar: 'ٱلْمَاجِد', tr: '(Al-Majid)', fr: 'Le Noble' },
+  { ar: 'ٱلْوَاحِد', tr: '(Al-Wahid)', fr: 'L’Unique' },
+  { ar: 'ٱلْأَحَد', tr: '(Al-Ahad)', fr: 'L’Un' },
+  { ar: 'ٱلصَّمَد', tr: '(As-Samad)', fr: 'L’Absolu' },
+  { ar: 'ٱلْقَادِر', tr: '(Al-Qadir)', fr: 'Le Tout-Puissant' },
+  { ar: 'ٱلْمُقْتَدِر', tr: '(Al-Muqtadir)', fr: 'Le Très Puissant' },
+  { ar: 'ٱلْمُقَدِّم', tr: '(Al-Muqaddim)', fr: 'Celui qui avance' },
+  { ar: 'ٱلْمُؤَخِّر', tr: '(Al-Mu’akhkhir)', fr: 'Celui qui retarde' },
+  { ar: 'ٱلْأَوَّل', tr: '(Al-Awwal)', fr: 'Le Premier' },
+  { ar: 'ٱلْآخِر', tr: '(Al-Akhir)', fr: 'Le Dernier' },
+  { ar: 'ٱلظَّاهِر', tr: '(Az-Zahir)', fr: 'L’Apparent' },
+  { ar: 'ٱلْبَاطِن', tr: '(Al-Batin)', fr: 'Le Caché' },
+  { ar: 'ٱلْوَالِي', tr: '(Al-Wali)', fr: 'Le Gouverneur' },
+  { ar: 'ٱلْمُتَعَالِي', tr: '(Al-Muta‘ali)', fr: 'Le Très Élevé' },
+  { ar: 'ٱلْبَرّ', tr: '(Al-Barr)', fr: 'Le Bienfaisant' },
+  { ar: 'ٱلتَّوَّاب', tr: '(At-Tawwab)', fr: 'Celui qui accepte le repentir' },
+  { ar: 'ٱلْمُنْتَقِم', tr: '(Al-Muntaqim)', fr: 'Le Vengeur' },
+  { ar: 'ٱلْعَفُوّ', tr: '(Al-‘Afuww)', fr: 'L’Indulgent' },
+  { ar: 'ٱلرَّؤُوف', tr: '(Ar-Ra’uf)', fr: 'Le Très Compatissant' },
+  { ar: 'مَالِكُ ٱلْمُلْك', tr: '(Malik-ul-Mulk)', fr: 'Le Possesseur du Royaume' },
+  { ar: 'ذُو ٱلْجَلَالِ وَٱلْإِكْرَام', tr: '(Dhul-Jalali wal-Ikram)', fr: 'Détenteur de la Majesté et de la Générosité' },
+  { ar: 'ٱلْمُقْسِط', tr: '(Al-Muqsit)', fr: 'L’Équitable' },
+  { ar: 'ٱلْجَامِع', tr: '(Al-Jami‘)', fr: 'Celui qui rassemble' },
+  { ar: 'ٱلْغَنِيّ', tr: '(Al-Ghani)', fr: 'Le Riche' },
+  { ar: 'ٱلْمُغْنِي', tr: '(Al-Mughni)', fr: 'Celui qui enrichit' },
+  { ar: 'ٱلْمَانِع', tr: '(Al-Mani‘)', fr: 'Celui qui empêche' },
+  { ar: 'ٱلضَّارّ', tr: '(Ad-Darr)', fr: 'Celui qui peut nuire' },
+  { ar: 'ٱلنَّافِع', tr: '(An-Nafi‘)', fr: 'Celui qui profite' },
+  { ar: 'ٱلنُّور', tr: '(An-Nur)', fr: 'La Lumière' },
+  { ar: 'ٱلْهَادِي', tr: '(Al-Hadi)', fr: 'Le Guide' },
+  { ar: 'ٱلْبَدِيع', tr: '(Al-Badi‘)', fr: 'L’Incomparable' },
+  { ar: 'ٱلْبَاقِي', tr: '(Al-Baqi)', fr: 'L’Éternel' },
+  { ar: 'ٱلْوَارِث', tr: '(Al-Warith)', fr: 'L’Héritier' },
+  { ar: 'ٱلرَّشِيد', tr: '(Ar-Rashid)', fr: 'Le Juste Guide' },
+  { ar: 'ٱلصَّبُور', tr: '(As-Sabur)', fr: 'Le Très Patient' },
+];
+
+function renderNames99() {
+  const ul = el('names-list');
+  if (!ul) return;
+  ul.innerHTML = '';
+
+  NAMES_99.forEach((x, idx) => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <div>
+        <div class="names-ar">${idx + 1}. ${escapeHtml(x.ar)}</div>
+        <div class="names-tr">${escapeHtml(x.tr)}</div>
+        <div class="names-meaning">${escapeHtml(x.fr || '')}</div>
+      </div>
+      <div class="small" style="font-weight:900;color:#1f5e53">#${idx + 1}</div>
+    `;
+    ul.appendChild(li);
+  });
+}
+
+/* Init */
+function setup() {
+  bindModals();
+
+  // 1) Applique verrouillage via URL ?m=
+  applyMosqueLockFromUrl();
+
+  // 2) Le selector ne sert qu'en mode admin (on le garde caché public)
+  populateMosqueSelector();
+
+  setupFooter();
+  setupDonButtons();
+  setupAdmin();
+  setupTasbih();
+  renderNames99();
+
+  el('don-add').onclick = () => {
+    const amt = parseInt(el('don-amt').value, 10) || 0;
+    if (amt <= 0) return alert('Montant invalide');
+    addDonationEntry({
+      amount: amt,
+      method: el('don-method').value,
+      category: el('don-category').value,
+      ref: el('don-ref').value,
+    });
+    el('don-amt').value = '';
+    el('don-ref').value = '';
+  };
+
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  fetchTimings();
+  setInterval(updateNextCountdown, 1000);
+
+  // IMPORTANT: le public ne voit pas le select; admin pourra gérer via panneau.
+  const wrap = el('mosque-selector-wrap');
+  if (wrap) wrap.style.display = 'none';
+
+  // Admin-only: si tu veux réactiver le select en admin, on le fera après ton check.
+}
+
+document.addEventListener('DOMContentLoaded', setup);
