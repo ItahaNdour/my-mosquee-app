@@ -1,4 +1,3 @@
-// app.js
 const ADMIN_PASSWORD = '1234';
 const SUPER_ADMIN_PASSWORD = '9999';
 let SESSION_ROLE = 'guest';
@@ -34,6 +33,7 @@ const DEFAULT_MOSQUES = [
 
 const MOCK = { Fajr: '05:45', Sunrise: '07:00', Dhuhr: '13:30', Asr: '16:45', Maghrib: '19:05', Isha: '20:30' };
 
+// ⚠️ Ramadan start (tu m’avais donné 18 février)
 const RAMADAN_START_DATE = '2026-02-18';
 const RAMADAN_TOTAL_DAYS = 30;
 
@@ -84,6 +84,7 @@ function buildTuneParam(offsets) {
   return a.join(',');
 }
 
+/* Mosques */
 function loadMosques() {
   let arr = JSON.parse(localStorage.getItem('mosques') || 'null');
   if (!arr || !arr.length) {
@@ -104,22 +105,65 @@ function getCurrentMosque() {
 
 function setCurrentMosque(id) { localStorage.setItem('currentMosqueId', id); }
 
+/* URL lock */
+function getForcedMosqueIdFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('m');
+  return id ? String(id).trim() : '';
+}
+
+function applyMosqueLockIfForced() {
+  const forcedId = getForcedMosqueIdFromURL();
+  if (!forcedId) return false;
+
+  const arr = loadMosques();
+  const exists = arr.some((x) => x.id === forcedId);
+  if (!exists) return false;
+
+  setCurrentMosque(forcedId);
+
+  const selRow = el('mosque-select-row');
+  const lockLine = el('mosque-lockline');
+  const sel = el('mosque-selector');
+  const lock = el('mosque-lock');
+
+  if (sel) {
+    sel.value = forcedId;
+    sel.disabled = true;
+    sel.style.opacity = '0.65';
+    sel.style.cursor = 'not-allowed';
+  }
+  if (lock) lock.style.display = 'inline-block';
+
+  if (selRow) selRow.style.display = 'none'; // étape suivante du link: cacher le select
+  if (lockLine) lockLine.style.display = 'flex';
+
+  return true;
+}
+
+function isMosqueForced() {
+  return !!getForcedMosqueIdFromURL();
+}
+
+function generatePublicLinkForMosque(mosqueId) {
+  const base = window.location.origin + window.location.pathname;
+  return `${base}?m=${encodeURIComponent(mosqueId)}`;
+}
+
+/* Dates */
 function todayKey() {
   const d = new Date();
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 }
-
 function ymKey() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
-
 function isoDayKey(d) {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
   return x.toISOString().slice(0, 10);
 }
-
 function keyDay() { return new Date().toISOString().slice(0, 10); }
 
 function updateClock() {
@@ -128,9 +172,12 @@ function updateClock() {
   el('gregorian-date').textContent = `${WEEKDAYS[n.getDay()]} ${n.getDate()} ${MONTHS[n.getMonth()]} ${n.getFullYear()}`;
 }
 
+/* Selector */
 function populateMosqueSelector() {
   const arr = loadMosques();
   const sel = el('mosque-selector');
+  if (!sel) return;
+
   sel.innerHTML = '';
   arr.forEach((m) => {
     const o = document.createElement('option');
@@ -138,6 +185,7 @@ function populateMosqueSelector() {
     o.textContent = m.name;
     sel.appendChild(o);
   });
+
   sel.value = getCurrentMosque().id;
 
   sel.onchange = (e) => {
@@ -146,33 +194,7 @@ function populateMosqueSelector() {
   };
 }
 
-/* ✅ Étape 1: forcer mosquée depuis ?m= + disable + cadenas */
-function applyMosqueFromURL() {
-  const params = new URLSearchParams(window.location.search);
-  const forcedId = params.get('m');
-  if (!forcedId) return false;
-
-  const mosques = loadMosques();
-  const exists = mosques.find((m) => m.id === forcedId);
-  if (!exists) return false;
-
-  setCurrentMosque(forcedId);
-
-  const select = el('mosque-selector');
-  const lock = el('mosque-lock');
-
-  if (select) {
-    select.value = forcedId;
-    select.disabled = true;
-    select.style.opacity = '0.7';
-    select.style.cursor = 'not-allowed';
-    select.title = 'Mosquée verrouillée par le lien';
-  }
-  if (lock) lock.style.display = 'block';
-
-  return true;
-}
-
+/* Events */
 function renderEvents() {
   const m = getCurrentMosque();
   const box = el('events-list');
@@ -197,19 +219,7 @@ function renderEvents() {
   box.appendChild(wrap);
 }
 
-function formatFastingDurationShort(fajr, maghrib) {
-  if (!fajr || !maghrib) return '—';
-  const f = parseHM(fajr);
-  const m = parseHM(maghrib);
-  const start = f.h * 60 + f.m;
-  const end = m.h * 60 + m.m;
-  let dur = end - start;
-  if (dur < 0) dur += 24 * 60;
-  const hh = Math.floor(dur / 60);
-  const mm = dur % 60;
-  return `${hh}h ${String(mm).padStart(2, '0')}m`;
-}
-
+/* Ramadan compact A */
 function renderRamadan() {
   const card = el('ramadan-card');
   if (!card) return;
@@ -225,21 +235,18 @@ function renderRamadan() {
   }
 
   const left = RAMADAN_TOTAL_DAYS - dayIndex;
-  el('ramadan-sub').textContent = `${dayIndex} Ramadan • ${WEEKDAYS[now.getDay()]} ${now.getDate()} ${MONTHS[now.getMonth()]}`;
+
   el('ramadan-day').textContent = `Jour ${dayIndex}/${RAMADAN_TOTAL_DAYS}`;
   el('ramadan-left').textContent = left === 0 ? 'Dernier jour' : `${left} j restants`;
+  el('ramadan-sub').textContent = `${dayIndex} Ramadan • ${WEEKDAYS[now.getDay()]} ${now.getDate()} ${MONTHS[now.getMonth()]}`;
 
-  const iftar = (timingsData && timingsData.Maghrib) ? timingsData.Maghrib : '--:--';
-  const suhoor = (timingsData && timingsData.Fajr) ? timingsData.Fajr : '--:--';
-  el('ramadan-iftar').textContent = iftar;
-  el('ramadan-suhoor').textContent = suhoor;
-
-  const durEl = el('ramadan-duration');
-  if (durEl) durEl.textContent = `Durée du jeûne: ${formatFastingDurationShort(suhoor, iftar)}`;
+  el('ramadan-iftar').textContent = (timingsData && timingsData.Maghrib) ? timingsData.Maghrib : '--:--';
+  el('ramadan-suhoor').textContent = (timingsData && timingsData.Fajr) ? timingsData.Fajr : '--:--';
 
   card.style.display = 'block';
 }
 
+/* Audio */
 function playBeep(duration = 600, freq = 880) {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -293,6 +300,7 @@ function playAdhan() {
   }
 }
 
+/* Next prayer */
 function updateNextCountdown() {
   if (!timingsData) {
     el('next-prayer-name').textContent = '—';
@@ -360,6 +368,7 @@ function updateNextCountdown() {
   if (delta > 1500 && name === playedFor) playedFor = '';
 }
 
+/* API timings */
 function mockData() {
   return { timings: MOCK, date: { hijri: { day: '3', month: { ar: "Rabi' al-Awwal" }, year: '1447' } } };
 }
@@ -395,6 +404,7 @@ async function fetchTimings() {
   }
 }
 
+/* Donations (secure: pending -> admin confirm -> totals update) */
 function normalizeCategory(cat) {
   const c = String(cat || '').trim();
   if (c === 'Travaux / Entretien') return 'Travaux';
@@ -413,63 +423,243 @@ function updatePublicCategoryHelp() {
   if (help) help.textContent = DON_CATEGORY_HELP[cat] || '—';
 }
 
-/* Qibla (Maps seulement) */
-function openQiblaInMaps(originLat, originLon) {
-  const origin = `${originLat},${originLon}`;
-  const dest = `${KAABA.lat},${KAABA.lon}`;
-  window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}`, '_blank');
+function kGoal(m) { return `dong_${m.id}`; }
+function getGoal(m) { const g = localStorage.getItem(kGoal(m)); return g ? parseInt(g, 10) : 100000; }
+function setGoal(m, val) { localStorage.setItem(kGoal(m), String(Math.max(0, parseInt(val, 10) || 0))); }
+
+function kConfirmedDay(m, dayKey) { return `donok_${m.id}_${dayKey}`; }
+function kConfirmedToday(m) { return kConfirmedDay(m, keyDay()); }
+function kMonthSum(m) { return `donm_${m.id}_${ymKey()}`; }
+
+function loadConfirmedForDay(m, dayKey) { return JSON.parse(localStorage.getItem(kConfirmedDay(m, dayKey)) || '[]'); }
+function saveConfirmedForDay(m, dayKey, list) { localStorage.setItem(kConfirmedDay(m, dayKey), JSON.stringify(list)); }
+
+function monthSum(m) { return parseInt(localStorage.getItem(kMonthSum(m)) || '0', 10); }
+function setMonthSum(m, v) { localStorage.setItem(kMonthSum(m), String(Math.max(0, parseInt(v, 10) || 0))); }
+
+/* Pending list */
+function kPending(m) { return `donpending_${m.id}`; }
+function loadPending(m) { return JSON.parse(localStorage.getItem(kPending(m)) || '[]'); }
+function savePending(m, list) { localStorage.setItem(kPending(m), JSON.stringify(list)); }
+
+/* keep storage sane */
+function trimList(list, maxLen) {
+  if (!Array.isArray(list)) return [];
+  return list.slice(0, Math.max(0, maxLen));
 }
 
-function setupQiblaMaps() {
-  const btn = el('qibla-maps-btn');
-  const status = el('qibla-maps-status');
-  if (!btn || !status) return;
-
+function confirmedSumToday() {
   const m = getCurrentMosque();
-  const base = CITY_COORDS[m.city] || CITY_COORDS.Medina;
+  return loadConfirmedForDay(m, keyDay()).reduce((s, x) => s + (Number(x.amount) || 0), 0);
+}
 
-  status.textContent = `Ville: ${m.city} (par défaut).`;
-  btn.onclick = () => openQiblaInMaps(base.lat, base.lon);
+function renderDonationAdminKpis() {
+  const m = getCurrentMosque();
+  const goal = getGoal(m);
+  const day = confirmedSumToday();
+  const month = monthSum(m);
 
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        status.textContent = 'GPS: OK (plus précis).';
-        btn.onclick = () => openQiblaInMaps(pos.coords.latitude, pos.coords.longitude);
-      },
-      () => {
-        status.textContent = `GPS refusé. Ville: ${m.city}.`;
-      },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
-    );
+  if (el('don-goal')) el('don-goal').textContent = goal.toLocaleString('fr-FR');
+  if (el('don-today')) el('don-today').textContent = day.toLocaleString('fr-FR');
+  if (el('don-month')) el('don-month').textContent = month.toLocaleString('fr-FR');
+
+  const left = Math.max(0, goal - day);
+  if (el('don-left')) el('don-left').textContent = left.toLocaleString('fr-FR');
+
+  const p = goal ? Math.min(100, Math.round((day * 100) / goal)) : 0;
+  if (el('don-bar')) el('don-bar').style.width = `${p}%`;
+}
+
+function getLastNDaysKeys(n) {
+  const keys = [];
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  for (let i = 0; i < n; i += 1) {
+    const x = new Date(d);
+    x.setDate(d.getDate() - i);
+    keys.push(isoDayKey(x));
+  }
+  return keys;
+}
+
+function computeWeekStats() {
+  const m = getCurrentMosque();
+  const dayKeys = getLastNDaysKeys(7);
+  const totals = { all: 0, Zakat: 0, Sadaqa: 0, Travaux: 0 };
+
+  dayKeys.forEach((dk) => {
+    const list = loadConfirmedForDay(m, dk);
+    list.forEach((x) => {
+      const cat = normalizeCategory(x.category);
+      totals.all += Number(x.amount) || 0;
+      totals[cat] += Number(x.amount) || 0;
+    });
+  });
+
+  return totals;
+}
+
+function renderDonWeekStats() {
+  const totals = computeWeekStats();
+  if (el('don-week')) el('don-week').textContent = totals.all.toLocaleString('fr-FR');
+  if (el('don-week-zakat')) el('don-week-zakat').textContent = totals.Zakat.toLocaleString('fr-FR');
+  if (el('don-week-sadaqa')) el('don-week-sadaqa').textContent = totals.Sadaqa.toLocaleString('fr-FR');
+  if (el('don-week-travaux')) el('don-week-travaux').textContent = totals.Travaux.toLocaleString('fr-FR');
+}
+
+/* Admin notification badge */
+function updateAdminPendingBadge() {
+  const m = getCurrentMosque();
+  const pending = loadPending(m);
+  const count = pending.length;
+
+  const badge = el('admin-badge');
+  const pill = el('adm-pending-pill');
+
+  if (badge) {
+    if (count > 0) {
+      badge.textContent = String(count);
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  if (pill) {
+    if (count > 0) {
+      pill.textContent = String(count);
+      pill.style.display = 'inline-block';
+    } else {
+      pill.style.display = 'none';
+    }
   }
 }
 
-/* Tasbih */
-function setupTasbih() {
-  const k = 'tasbih_count';
-  const countEl = el('tasbih-count');
-  const plus = el('tasbih-plus');
-  const reset = el('tasbih-reset');
-  if (!countEl || !plus || !reset) return;
-
-  const get = () => parseInt(localStorage.getItem(k) || '0', 10) || 0;
-  const set = (v) => { localStorage.setItem(k, String(v)); countEl.textContent = String(v); };
-
-  set(get());
-
-  plus.onclick = () => set(get() + 1);
-  reset.onclick = () => set(0);
+function playNotify() {
+  navigator.vibrate && navigator.vibrate(80);
+  playBeep(120, 1040);
 }
 
-/* WhatsApp + dons */
+/* Public submits pending */
+function addPendingDonation({ amount, method, category, ref }) {
+  const m = getCurrentMosque();
+  const list = loadPending(m);
+
+  const entry = {
+    id: `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
+    ts: new Date().toISOString(),
+    amount: Number(amount) || 0,
+    method: method || 'Wave',
+    category: normalizeCategory(category),
+    ref: String(ref || '').trim(),
+    status: 'pending',
+  };
+
+  list.unshift(entry);
+  savePending(m, trimList(list, 200));
+
+  updateAdminPendingBadge();
+  playNotify();
+}
+
+/* Confirm / reject in admin */
+function confirmPending(id) {
+  const m = getCurrentMosque();
+  const pending = loadPending(m);
+  const idx = pending.findIndex((x) => x.id === id);
+  if (idx < 0) return;
+
+  const x = pending[idx];
+
+  // remove from pending
+  pending.splice(idx, 1);
+  savePending(m, pending);
+
+  // add to confirmed today (keep small)
+  const dayKey = keyDay();
+  const confirmed = loadConfirmedForDay(m, dayKey);
+  confirmed.unshift({
+    id: x.id,
+    ts: x.ts,
+    amount: Number(x.amount) || 0,
+    method: x.method,
+    category: x.category,
+    ref: x.ref,
+  });
+  saveConfirmedForDay(m, dayKey, trimList(confirmed, 200));
+
+  // update month sum
+  setMonthSum(m, monthSum(m) + (Number(x.amount) || 0));
+
+  updateAdminPendingBadge();
+  renderDonationAdminKpis();
+  renderDonWeekStats();
+  renderDonTableAdmin();
+}
+
+function rejectPending(id) {
+  const m = getCurrentMosque();
+  const pending = loadPending(m);
+  const idx = pending.findIndex((x) => x.id === id);
+  if (idx < 0) return;
+
+  pending.splice(idx, 1);
+  savePending(m, pending);
+
+  updateAdminPendingBadge();
+  renderDonTableAdmin();
+}
+
+function renderDonTableAdmin() {
+  const tb = document.querySelector('#don-table tbody');
+  if (!tb) return;
+
+  const m = getCurrentMosque();
+  const pending = loadPending(m);
+
+  tb.innerHTML = '';
+
+  if (!pending.length) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="7" class="small" style="padding:10px">Aucun don en attente.</td>`;
+    tb.appendChild(tr);
+    return;
+  }
+
+  pending.forEach((r) => {
+    const tr = document.createElement('tr');
+    const st = '<span class="badge b-p">En attente</span>';
+    tr.innerHTML = `
+      <td>${new Date(r.ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</td>
+      <td><strong>${(Number(r.amount) || 0).toLocaleString('fr-FR')}</strong></td>
+      <td>${escapeHtml(r.method || '')}</td>
+      <td><strong>${escapeHtml(normalizeCategory(r.category))}</strong></td>
+      <td>${escapeHtml(r.ref || '')}</td>
+      <td>${st}</td>
+      <td style="white-space:nowrap">
+        <button data-act="ok" data-id="${r.id}" class="btn btn-primary" style="padding:6px 10px; min-width:auto">OK</button>
+        <button data-act="no" data-id="${r.id}" class="btn" style="padding:6px 10px; min-width:auto; background:#ef4444; color:#fff">X</button>
+      </td>
+    `;
+    tb.appendChild(tr);
+  });
+
+  tb.querySelectorAll('button[data-act]').forEach((b) => {
+    b.onclick = () => {
+      if (b.dataset.act === 'ok') confirmPending(b.dataset.id);
+      else rejectPending(b.dataset.id);
+    };
+  });
+}
+
+/* WhatsApp shortcuts (no totals update) */
 function openWhatsApp(to, msg) {
   window.open(`https://wa.me/${encodeURIComponent(to)}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
 function setupDonButtons() {
-  const pubSel = el('don-public-category');
-  if (pubSel) pubSel.onchange = () => updatePublicCategoryHelp();
+  const catSel = el('don-public-category');
+  if (catSel) catSel.onchange = () => updatePublicCategoryHelp();
 
   el('btn-wave').onclick = () => {
     const m = getCurrentMosque();
@@ -493,170 +683,79 @@ Mosquée : ${m.name}
 BarakAllahou fik.`);
   };
 
+  // open modal to submit pending donation
   el('btn-claimed').onclick = () => {
-    const m = getCurrentMosque();
-    const cat = getPublicCategory();
-    openWhatsApp(m.phone || '', `Salam, *j’ai donné* [montant] CFA via [Wave/Orange/Espèces].
-Catégorie : *${cat}*
-Référence : [collez le reçu]
-Mosquée : ${m.name}`);
+    const modal = el('modal-donate');
+    if (!modal) return;
+    el('pub-category').value = getPublicCategory();
+    modal.style.display = 'block';
+  };
+
+  // submit pending
+  el('pub-submit').onclick = () => {
+    const amt = parseInt(el('pub-amt').value, 10) || 0;
+    if (amt <= 0) return alert('Montant invalide');
+
+    addPendingDonation({
+      amount: amt,
+      method: el('pub-method').value,
+      category: el('pub-category').value,
+      ref: el('pub-ref').value,
+    });
+
+    // clean
+    el('pub-amt').value = '';
+    el('pub-ref').value = '';
+
+    closeAll();
+    showStatus(`Merci pour votre don de ${amt.toLocaleString('fr-FR')} CFA. En attente de confirmation.`, '#1f5e53');
   };
 }
 
-/* Donations storage */
-function kGoal(m) { return `dong_${m.id}`; }
-function getGoal(m) { const g = localStorage.getItem(kGoal(m)); return g ? parseInt(g, 10) : 100000; }
-function setGoal(m, val) { localStorage.setItem(kGoal(m), String(Math.max(0, parseInt(val, 10) || 0))); }
-
-function kListForDay(m, dayKey) { return `donlist_${m.id}_${dayKey}`; }
-function kList(m) { return kListForDay(m, keyDay()); }
-
-function kMonthSum(m) { return `donm_${m.id}_${ymKey()}`; }
-
-function loadListForDay(m, dayKey) { return JSON.parse(localStorage.getItem(kListForDay(m, dayKey)) || '[]'); }
-function loadList(m) { return JSON.parse(localStorage.getItem(kList(m)) || '[]'); }
-function saveList(m, list) { localStorage.setItem(kList(m), JSON.stringify(list)); }
-
-function monthSum(m) { return parseInt(localStorage.getItem(kMonthSum(m)) || '0', 10); }
-function setMonthSum(m, v) { localStorage.setItem(kMonthSum(m), String(Math.max(0, parseInt(v, 10) || 0))); }
-
-function confirmedSumToday() {
-  const m = getCurrentMosque();
-  return loadList(m).filter((x) => x.status === 'ok').reduce((s, x) => s + x.amount, 0);
+/* Qibla (Maps only) */
+function openQiblaInMaps(originLat, originLon) {
+  const origin = `${originLat},${originLon}`;
+  const dest = `${KAABA.lat},${KAABA.lon}`;
+  window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}`, '_blank');
 }
 
-function renderDonation() {
+function setupQiblaMaps() {
+  const btn = el('qibla-maps-btn');
+  const status = el('qibla-maps-status');
+  if (!btn || !status) return;
+
   const m = getCurrentMosque();
-  const goal = getGoal(m);
-  const day = confirmedSumToday();
-  const month = monthSum(m);
+  const base = CITY_COORDS[m.city] || CITY_COORDS.Medina;
 
-  el('don-goal').textContent = goal.toLocaleString('fr-FR');
-  el('don-today').textContent = day.toLocaleString('fr-FR');
-  el('don-month').textContent = month.toLocaleString('fr-FR');
+  status.textContent = `Ville: ${m.city} (par défaut).`;
+  btn.onclick = () => openQiblaInMaps(base.lat, base.lon);
 
-  const left = Math.max(0, goal - day);
-  el('don-left').textContent = left.toLocaleString('fr-FR');
-
-  const p = goal ? Math.min(100, Math.round((day * 100) / goal)) : 0;
-  el('don-bar').style.width = `${p}%`;
-}
-
-function renderDonTable() {
-  const m = getCurrentMosque();
-  const tb = document.querySelector('#don-table tbody');
-  if (!tb) return;
-  tb.innerHTML = '';
-
-  loadList(m).forEach((r) => {
-    const tr = document.createElement('tr');
-    const st = r.status === 'ok'
-      ? '<span class="badge b-ok">Confirmé</span>'
-      : (r.status === 'no'
-        ? '<span class="badge b-no">Annulé</span>'
-        : '<span class="badge b-p">En attente</span>');
-
-    const category = normalizeCategory(r.category);
-
-    tr.innerHTML = `<td>${new Date(r.ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</td>
-      <td><strong>${r.amount.toLocaleString('fr-FR')}</strong></td>
-      <td>${escapeHtml(r.method || '')}</td>
-      <td><strong>${escapeHtml(category)}</strong></td>
-      <td>${escapeHtml(r.ref || '')}</td>
-      <td>${st}</td>
-      <td style="white-space:nowrap">
-        <button data-act="ok" data-id="${r.id}" class="btn btn-primary" style="padding:6px 10px; min-width:auto">OK</button>
-        <button data-act="no" data-id="${r.id}" class="btn" style="padding:6px 10px; min-width:auto; background:#ef4444; color:#fff">X</button>
-      </td>`;
-    tb.appendChild(tr);
-  });
-
-  tb.querySelectorAll('button[data-act]').forEach((b) => {
-    b.onclick = () => setEntryStatus(b.dataset.id, b.dataset.act);
-  });
-}
-
-function addDonationEntry({ amount, method, ref, category }) {
-  const m = getCurrentMosque();
-  const list = loadList(m);
-  const id = Date.now().toString(36);
-
-  list.unshift({
-    id,
-    ts: new Date().toISOString(),
-    amount: Number(amount) || 0,
-    method: method || 'Wave',
-    category: normalizeCategory(category),
-    ref: ref || '',
-    status: 'pending',
-  });
-
-  saveList(m, list);
-  renderDonTable();
-  renderDonation();
-  renderDonWeekStats();
-}
-
-function setEntryStatus(id, newStatus) {
-  const m = getCurrentMosque();
-  const list = loadList(m);
-  const i = list.findIndex((x) => x.id === id);
-  if (i < 0) return;
-
-  const wasOk = list[i].status === 'ok';
-  list[i].status = newStatus;
-  saveList(m, list);
-
-  if (newStatus === 'ok' && !wasOk) setMonthSum(m, monthSum(m) + list[i].amount);
-  if (wasOk && newStatus !== 'ok') setMonthSum(m, monthSum(m) - list[i].amount);
-
-  renderDonTable();
-  renderDonation();
-  renderDonWeekStats();
-}
-
-/* Stats semaine: 7 derniers jours */
-function getLastNDaysKeys(n) {
-  const keys = [];
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  for (let i = 0; i < n; i += 1) {
-    const x = new Date(d);
-    x.setDate(d.getDate() - i);
-    keys.push(isoDayKey(x));
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        status.textContent = 'GPS: OK (plus précis).';
+        btn.onclick = () => openQiblaInMaps(pos.coords.latitude, pos.coords.longitude);
+      },
+      () => { status.textContent = `GPS refusé. Ville: ${m.city}.`; },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
+    );
   }
-  return keys;
 }
 
-function computeWeekStats() {
-  const m = getCurrentMosque();
-  const dayKeys = getLastNDaysKeys(7);
+/* Tasbih */
+function setupTasbih() {
+  const k = 'tasbih_count';
+  const countEl = el('tasbih-count');
+  const plus = el('tasbih-plus');
+  const reset = el('tasbih-reset');
+  if (!countEl || !plus || !reset) return;
 
-  const totals = { all: 0, Zakat: 0, Sadaqa: 0, Travaux: 0 };
+  const get = () => parseInt(localStorage.getItem(k) || '0', 10) || 0;
+  const set = (v) => { localStorage.setItem(k, String(v)); countEl.textContent = String(v); };
 
-  dayKeys.forEach((dk) => {
-    const list = loadListForDay(m, dk);
-    list
-      .filter((x) => x.status === 'ok')
-      .forEach((x) => {
-        const cat = normalizeCategory(x.category);
-        totals.all += Number(x.amount) || 0;
-        totals[cat] += Number(x.amount) || 0;
-      });
-  });
-
-  return totals;
-}
-
-function renderDonWeekStats() {
-  const w = el('don-week');
-  if (!w) return;
-
-  const totals = computeWeekStats();
-  el('don-week').textContent = totals.all.toLocaleString('fr-FR');
-  el('don-week-zakat').textContent = totals.Zakat.toLocaleString('fr-FR');
-  el('don-week-sadaqa').textContent = totals.Sadaqa.toLocaleString('fr-FR');
-  el('don-week-travaux').textContent = totals.Travaux.toLocaleString('fr-FR');
+  set(get());
+  plus.onclick = () => set(get() + 1);
+  reset.onclick = () => set(0);
 }
 
 /* Modals */
@@ -669,7 +768,7 @@ function bindModals() {
   });
 }
 
-/* 99 Noms (COMPLET) */
+/* 99 Names (inchangé avec parenthèses) */
 const NAMES_99 = [
   { ar:'ٱللَّٰه', fr:'Allah' },
   { ar:'ٱلرَّحْمَٰن', fr:'Ar-Rahman (Le Tout Miséricordieux)' },
@@ -778,7 +877,7 @@ function renderNames99() {
   const header = el('names-header');
   if (!list || !header) return;
 
-  header.textContent = "Les 99 Noms d'Allah";
+  header.textContent = `Les 99 Noms d'Allah`;
   list.innerHTML = '';
 
   NAMES_99.forEach((n, idx) => {
@@ -840,11 +939,38 @@ function fillAdminForm(id) {
   el('adm-method').value = (m.method != null) ? m.method : 3;
   el('adm-school').value = (m.school != null) ? m.school : 0;
   el('adm-offsets').value = (m.offsets && m.offsets.length === 6 ? m.offsets : [0, 0, 0, 0, 0, 0]).join(',');
-  el('adm-adhan-url').value = m.adhanUrl || '';
-  el('adm-quiet').value = m.quiet || '22:00-05:00';
-  el('adm-allow-fajr').checked = !!m.allowFajr;
+  if (el('adm-adhan-url')) el('adm-adhan-url').value = m.adhanUrl || '';
+  if (el('adm-quiet')) el('adm-quiet').value = m.quiet || '22:00-05:00';
+  if (el('adm-allow-fajr')) el('adm-allow-fajr').checked = !!m.allowFajr;
 
   el('adm-goal').value = getGoal(m);
+
+  const linkInput = el('adm-public-link');
+  if (linkInput) linkInput.value = generatePublicLinkForMosque(m.id);
+}
+
+function populateAdmMosqueSelect() {
+  const sel = el('adm-mosque');
+  if (!sel) return;
+
+  const arr = loadMosques();
+  sel.innerHTML = '';
+  arr.forEach((m) => {
+    const o = document.createElement('option');
+    o.value = m.id;
+    o.textContent = m.name;
+    sel.appendChild(o);
+  });
+  sel.value = getCurrentMosque().id;
+
+  sel.onchange = () => {
+    setCurrentMosque(sel.value);
+    fillAdminForm(sel.value);
+    updateAdminPendingBadge();
+    renderDonationAdminKpis();
+    renderDonWeekStats();
+    renderDonTableAdmin();
+  };
 }
 
 function setupAdmin() {
@@ -856,13 +982,35 @@ function setupAdmin() {
 
     const isSuper = SESSION_ROLE === 'super';
     el('super-row').style.display = isSuper ? 'flex' : 'none';
-    el('advanced-block').style.display = isSuper ? 'block' : 'none';
+    if (el('advanced-block')) el('advanced-block').style.display = isSuper ? 'block' : 'none';
     el('role-hint').textContent = isSuper ? 'Mode SUPER ADMIN' : 'Mode ADMIN (mosquée verrouillée)';
 
-    el('don-admin').style.display = 'block';
-
     populateCitySelect(el('adm-city'));
+
+    if (isSuper) populateAdmMosqueSelect();
+
     fillAdminForm(getCurrentMosque().id);
+    renderDonationAdminKpis();
+    renderDonWeekStats();
+    renderDonTableAdmin();
+    updateAdminPendingBadge();
+
+    // link buttons
+    const linkInput = el('adm-public-link');
+    el('adm-copy-link').onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(linkInput.value);
+        showStatus('Lien copié.');
+      } catch {
+        alert('Copie impossible. Copie manuelle.');
+      }
+    };
+
+    el('adm-share-link').onclick = () => {
+      const m = getCurrentMosque();
+      const text = `🕌 Mosquée ${m.name}\nLien officiel :\n${linkInput.value}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    };
 
     openModal('modal-admin');
   };
@@ -893,9 +1041,9 @@ function setupAdmin() {
       method: parseInt(el('adm-method').value, 10),
       school: parseInt(el('adm-school').value, 10),
       offsets,
-      adhanUrl: el('adm-adhan-url').value.trim(),
-      quiet: el('adm-quiet').value.trim() || '22:00-05:00',
-      allowFajr: el('adm-allow-fajr').checked,
+      adhanUrl: el('adm-adhan-url') ? el('adm-adhan-url').value.trim() : '',
+      quiet: el('adm-quiet') ? (el('adm-quiet').value.trim() || '22:00-05:00') : '22:00-05:00',
+      allowFajr: el('adm-allow-fajr') ? el('adm-allow-fajr').checked : true,
     };
 
     saveMosques(arr);
@@ -907,18 +1055,7 @@ function setupAdmin() {
   };
 }
 
-function setupQuickAmounts() {
-  document.querySelectorAll('.chip[data-amt]').forEach((b) => {
-    b.onclick = () => {
-      const amt = parseInt(b.dataset.amt, 10) || 0;
-      const input = el('don-amt');
-      const cur = parseInt(input.value || '0', 10) || 0;
-      input.value = String(cur + amt);
-      input.focus();
-    };
-  });
-}
-
+/* Display all */
 function displayAll(data) {
   timingsData = (data && data.timings) ? data.timings : MOCK;
   const m = getCurrentMosque();
@@ -952,41 +1089,21 @@ function displayAll(data) {
 
   updatePublicCategoryHelp();
   updateNextCountdown();
-  renderDonation();
-  renderDonTable();
-  renderDonWeekStats();
-  renderEvents();
   renderRamadan();
-
   setupQiblaMaps();
+  updateAdminPendingBadge();
 }
 
+/* Init */
 function setup() {
   bindModals();
-
   populateMosqueSelector();
-  applyMosqueFromURL(); // ✅ Étape 1
+  applyMosqueLockIfForced();
 
   setupFooter();
   setupDonButtons();
   setupAdmin();
-  setupQuickAmounts();
   setupTasbih();
-
-  el('don-add').onclick = () => {
-    const amt = parseInt(el('don-amt').value, 10) || 0;
-    if (amt <= 0) return alert('Montant invalide');
-
-    addDonationEntry({
-      amount: amt,
-      method: el('don-method').value,
-      category: el('don-category').value,
-      ref: el('don-ref').value,
-    });
-
-    el('don-amt').value = '';
-    el('don-ref').value = '';
-  };
 
   updateClock();
   setInterval(updateClock, 1000);
