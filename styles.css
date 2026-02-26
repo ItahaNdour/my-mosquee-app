@@ -48,15 +48,6 @@ h1{margin:6px 0 2px; font-size:24px; color:var(--green)}
 .ramadan-head{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap}
 .ramadan-title{font-weight:900; color:#1f5e53; font-size:16px}
 .ramadan-day{font-weight:900; font-size:20px; color:#134e42}
-.ramadan-pill{
-  background:rgba(47,125,109,.10);
-  border:1px solid rgba(47,125,109,.18);
-  border-radius:12px;
-  padding:10px 12px;
-  font-weight:800;
-  color:#1f5e53;
-  text-align:left;
-}
 
 .don-public{margin-top:12px; padding:14px}
 .don-public h3{margin:0 0 8px; color:#1f5e53; font-size:16px; text-align:center}
@@ -64,17 +55,6 @@ h1{margin:6px 0 2px; font-size:24px; color:var(--green)}
 .don-lines li{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-top:1px solid #eef2f7}
 .don-lines li:first-child{border-top:none}
 .don-cta{display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:10px}
-
-.don-cause{margin:10px 0 8px}
-.don-cause-row{display:flex; align-items:center; gap:10px; margin-top:6px}
-.don-cause-row select{
-  width:100%;
-  padding:10px;
-  border:1px solid #e5e7eb;
-  border-radius:12px;
-  font-weight:800;
-}
-.don-public-stats{margin-top:10px}
 
 .btn{padding:10px 12px; border:none; border-radius:10px; cursor:pointer; font-weight:700}
 .btn-primary{background:var(--green); color:#fff}
@@ -96,14 +76,14 @@ h1{margin:6px 0 2px; font-size:24px; color:var(--green)}
 .b-p{background:#fff7ed; color:#7c2d12}
 .b-no{background:#fee2e2; color:#7f1d1d}
 
-/* Qibla compact + repères N/E/S/W */
+/* Qibla compact */
 .qibla{margin-top:12px; padding:14px}
 .qibla-head{display:flex; justify-content:space-between; align-items:center; gap:10px}
 .qibla h3{margin:0; color:#1f5e53}
 .qibla-btn{padding:9px 12px}
 .qibla-wrap{display:flex; gap:12px; align-items:center; margin-top:10px; flex-wrap:wrap}
 .qibla-dial{
-  width:min(240px,56vw);
+  width:min(220px,46vw);
   aspect-ratio:1/1;
   border-radius:999px;
   background:radial-gradient(circle at 30% 25%, #ffffff 0%, #f4faf8 48%, #e7f3f0 100%);
@@ -121,7 +101,7 @@ h1{margin:6px 0 2px; font-size:24px; color:var(--green)}
   width:0;height:0;
   border-left:10px solid transparent;
   border-right:10px solid transparent;
-  border-bottom:96px solid var(--accent);
+  border-bottom:90px solid var(--accent);
   filter: drop-shadow(0 6px 8px rgba(0,0,0,.15));
 }
 .qibla-center{
@@ -131,34 +111,14 @@ h1{margin:6px 0 2px; font-size:24px; color:var(--green)}
   position:relative;
   z-index:2;
 }
-.qibla-n,.qibla-e,.qibla-s,.qibla-w{
-  position:absolute;
-  font-weight:900;
-  color:#6b7280;
-  opacity:.85;
-}
-.qibla-n{top:14px}
-.qibla-s{bottom:14px}
-.qibla-e{right:18px}
-.qibla-w{left:18px}
-
 .qibla-info{flex:1; min-width:220px}
 .qibla-line{display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:6px 0; border-bottom:1px solid #eef2f7}
 .qibla-line:last-child{border-bottom:none}
 #qibla-bearing,#qibla-heading{color:#134e42}
 #qibla-status{margin-top:8px}
-.qibla-tip{
-  margin-top:10px;
-  background:rgba(47,125,109,.10);
-  border:1px solid rgba(47,125,109,.18);
-  border-radius:12px;
-  padding:10px 12px;
-  font-weight:900;
-  color:#1f5e53;
-}
 @media (max-width:380px){
   .qibla-info{min-width:unset}
-  .qibla-arrow{border-bottom-width:84px}
+  .qibla-arrow{border-bottom-width:78px}
 }
 
 footer{
