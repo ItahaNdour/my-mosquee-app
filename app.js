@@ -37,9 +37,6 @@ const MOCK = { Fajr: '05:45', Sunrise: '07:00', Dhuhr: '13:30', Asr: '16:45', Ma
 const RAMADAN_START_DATE = '2026-02-18';
 const RAMADAN_TOTAL_DAYS = 30;
 
-// Qibla Maps
-const KAABA = { lat: 21.4225, lon: 39.8262 };
-
 // Dons
 const DON_CATEGORIES = ['Zakat', 'Sadaqa', 'Travaux'];
 const DON_CATEGORY_HELP = {
@@ -64,13 +61,19 @@ function showStatus(msg, bg) {
   setTimeout(() => { node.style.display = 'none'; }, 2500);
 }
 
-function fmt(ms) {
-  if (ms < 0) return '00:00:00';
-  const t = Math.floor(ms / 1000);
-  const h = Math.floor(t / 3600) % 24;
-  const m = Math.floor((t % 3600) / 60);
-  const s = t % 60;
-  return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
+let popupTimer = null;
+function showPopup(msg, title = 'Merci 🙏') {
+  const t = el('popup-title');
+  const p = el('popup-text');
+  if (t) t.textContent = title;
+  if (p) p.textContent = msg;
+
+  openModal('modal-popup');
+
+  if (popupTimer) clearTimeout(popupTimer);
+  popupTimer = setTimeout(() => {
+    closeAll();
+  }, 10000); // 10 sec
 }
 
 function escapeHtml(s) {
@@ -101,6 +104,22 @@ function getUrlMosqueId() {
   return m || null;
 }
 
+/* THEME */
+function applyTheme(theme) {
+  document.body.classList.toggle('dark', theme === 'dark');
+  localStorage.setItem('theme', theme);
+  const icon = el('theme-toggle')?.querySelector('i');
+  if (icon) icon.className = theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+}
+function initTheme() {
+  const saved = localStorage.getItem('theme') || 'light';
+  applyTheme(saved);
+  el('theme-toggle').onclick = () => {
+    const cur = document.body.classList.contains('dark') ? 'dark' : 'light';
+    applyTheme(cur === 'dark' ? 'light' : 'dark');
+  };
+}
+
 /* Storage mosquées */
 function loadMosques() {
   let arr = JSON.parse(localStorage.getItem('mosques') || 'null');
@@ -116,7 +135,6 @@ function getCurrentMosque() {
   const arr = loadMosques();
   const forced = getUrlMosqueId();
   const stored = localStorage.getItem('currentMosqueId');
-
   const id = forced || stored || arr[0].id;
   return arr.find((m) => m.id === id) || arr[0];
 }
@@ -130,7 +148,6 @@ function ymKey() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
-function keyDay() { return new Date().toISOString().slice(0, 10); }
 
 /* UI header */
 function updateClock() {
@@ -178,7 +195,7 @@ function populateMosqueSelector() {
   };
 }
 
-/* Events + modals */
+/* Modals */
 function openModal(id) { el(id).style.display = 'block'; }
 function closeAll() { document.querySelectorAll('.modal').forEach((m) => { m.style.display = 'none'; }); }
 
@@ -187,8 +204,13 @@ function bindModals() {
   window.addEventListener('click', (e) => {
     if (e.target && e.target.classList && e.target.classList.contains('modal')) closeAll();
   });
+
+  // popup ok
+  const ok = el('popup-ok');
+  if (ok) ok.onclick = () => closeAll();
 }
 
+/* Events */
 function renderEvents() {
   const m = getCurrentMosque();
   const box = el('events-list');
@@ -201,7 +223,7 @@ function renderEvents() {
 
   events.forEach((ev) => {
     const item = document.createElement('div');
-    item.style.border = '1px solid #eef2f7';
+    item.style.border = '1px solid rgba(238,242,247,.9)';
     item.style.borderRadius = '12px';
     item.style.padding = '10px 12px';
     item.innerHTML = `<div style="font-weight:900;color:#1f5e53">${escapeHtml(ev.title || '')}</div>
@@ -250,7 +272,6 @@ function renderRamadan() {
   const suhoor = (timingsData && timingsData.Fajr) ? timingsData.Fajr : '--:--';
   el('ramadan-iftar').textContent = iftar;
   el('ramadan-suhoor').textContent = suhoor;
-
   el('ramadan-duration').textContent = `Durée du jeûne: ${formatFastingDurationShort(suhoor, iftar)}`;
 
   card.style.display = 'block';
@@ -280,6 +301,15 @@ function playChime() { playBeep(650, 740); navigator.vibrate && navigator.vibrat
 function playAdhan() { playBeep(1000, 660); }
 
 /* Next prayer */
+function fmt(ms) {
+  if (ms < 0) return '00:00:00';
+  const t = Math.floor(ms / 1000);
+  const h = Math.floor(t / 3600) % 24;
+  const m = Math.floor((t % 3600) / 60);
+  const s = t % 60;
+  return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
+}
+
 function updateNextCountdown() {
   if (!timingsData) {
     el('next-prayer-name').textContent = '—';
@@ -379,10 +409,7 @@ async function fetchTimings() {
   }
 }
 
-/* Dons - logique correcte:
-   - le fidèle crée une demande (pending) => NE COMPTE PAS
-   - l’admin valide => ça compte dans le total mois + barre public
-*/
+/* Dons */
 function normalizeCategory(cat) {
   const c = String(cat || '').trim();
   if (c === 'Travaux / Entretien') return 'Travaux';
@@ -399,18 +426,17 @@ function updatePublicCategoryHelp() {
   if (help) help.textContent = DON_CATEGORY_HELP[cat] || '—';
 }
 
-function kGoal(m) { return `dong_${m.id}`; }              // objectif mensuel (public)
+function kGoal(m) { return `dong_${m.id}`; }
 function getGoal(m) { const g = localStorage.getItem(kGoal(m)); return g ? parseInt(g, 10) : 500000; }
 function setGoal(m, val) { localStorage.setItem(kGoal(m), String(Math.max(0, parseInt(val, 10) || 0))); }
 
-function kMonthSum(m) { return `donm_${m.id}_${ymKey()}`; }  // total confirmé du mois
+function kMonthSum(m) { return `donm_${m.id}_${ymKey()}`; }
 function monthSum(m) { return parseInt(localStorage.getItem(kMonthSum(m)) || '0', 10); }
 function setMonthSum(m, v) { localStorage.setItem(kMonthSum(m), String(Math.max(0, parseInt(v, 10) || 0))); }
 
-function kReq(m) { return `donreq_${m.id}`; }             // demandes (pending/ok/no)
+function kReq(m) { return `donreq_${m.id}`; }
 function loadReq(m) { return JSON.parse(localStorage.getItem(kReq(m)) || '[]'); }
 function saveReq(m, list) {
-  // anti “page infinie”: on garde max 200 dernières demandes
   const trimmed = Array.isArray(list) ? list.slice(0, 200) : [];
   localStorage.setItem(kReq(m), JSON.stringify(trimmed));
 }
@@ -432,7 +458,6 @@ function updateAdminBadge() {
   }
 }
 
-/* Public KPIs */
 function renderDonPublic() {
   const m = getCurrentMosque();
   const goal = getGoal(m);
@@ -445,13 +470,13 @@ function renderDonPublic() {
   el('don-public-bar').style.width = `${p}%`;
 }
 
-/* Mini form public -> crée une demande */
 function openDonModal() {
   el('don-amount').value = '';
   el('don-ref').value = '';
   el('don-category').value = getPublicCategory();
   openModal('modal-don');
 }
+
 function submitDonationRequest() {
   const m = getCurrentMosque();
   const amount = parseInt(el('don-amount').value, 10) || 0;
@@ -472,11 +497,11 @@ function submitDonationRequest() {
   saveReq(m, list);
 
   closeAll();
-  showStatus(`Merci 🙏 Don de ${amount.toLocaleString('fr-FR')} CFA en attente de confirmation.`, '#2f7d6d');
+  showPopup(`Merci pour votre don de ${amount.toLocaleString('fr-FR')} CFA.\nIl est en attente de confirmation.`, 'Merci 🙏');
+
   updateAdminBadge();
 }
 
-/* Admin table demandes */
 function renderReqTable() {
   const tb = document.querySelector('#req-table tbody');
   if (!tb) return;
@@ -569,37 +594,7 @@ BarakAllahou fik.`);
   };
 
   el('btn-claimed').onclick = () => openDonModal();
-
   el('don-confirm').onclick = () => submitDonationRequest();
-}
-
-/* Qibla Maps only */
-function openQiblaInMaps(originLat, originLon) {
-  const origin = `${originLat},${originLon}`;
-  const dest = `${KAABA.lat},${KAABA.lon}`;
-  window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}`, '_blank');
-}
-function setupQiblaMaps() {
-  const btn = el('qibla-maps-btn');
-  const status = el('qibla-maps-status');
-  if (!btn || !status) return;
-
-  const m = getCurrentMosque();
-  const base = CITY_COORDS[m.city] || CITY_COORDS.Medina;
-
-  status.textContent = `Ville: ${m.city} (par défaut).`;
-  btn.onclick = () => openQiblaInMaps(base.lat, base.lon);
-
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        status.textContent = 'GPS: OK (plus précis).';
-        btn.onclick = () => openQiblaInMaps(pos.coords.latitude, pos.coords.longitude);
-      },
-      () => { status.textContent = `GPS refusé. Ville: ${m.city}.`; },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
-    );
-  }
 }
 
 /* Tasbih */
@@ -678,7 +673,6 @@ function setupAdmin() {
     el('super-row').style.display = isSuper ? 'flex' : 'none';
     el('role-hint').textContent = isSuper ? 'Mode SUPER ADMIN' : 'Mode ADMIN';
 
-    // selector visible seulement admin/super et si pas de ?m=
     refreshMosqueAccessUI();
     if (SESSION_ROLE !== 'guest') populateMosqueSelector();
 
@@ -787,7 +781,6 @@ function setupFooter() {
   };
 
   el('about-btn').onclick = () => openModal('modal-about');
-
   el('names-btn').onclick = () => { renderNames99(); openModal('modal-names'); };
 
   el('share-btn').onclick = () => {
@@ -836,12 +829,10 @@ function displayAll(data) {
   renderReqTable();
   renderEvents();
   renderRamadan();
-  setupQiblaMaps();
-
   refreshMosqueAccessUI();
 }
 
-/* 99 Noms (avec parenthèses phonétique) */
+/* 99 Noms */
 const NAMES_99 = [
   { ar:'ٱللَّٰه', fr:'Allah' },
   { ar:'ٱلرَّحْمَٰن', fr:'Ar-Rahman (Le Tout Miséricordieux)' },
@@ -962,8 +953,8 @@ function renderNames99() {
 /* Init */
 function setup() {
   bindModals();
+  initTheme();
 
-  // If URL has ?m=..., we force mosque and lock selector forever
   const forced = getUrlMosqueId();
   if (forced) setCurrentMosque(forced);
 
@@ -981,7 +972,6 @@ function setup() {
   fetchTimings();
   setInterval(updateNextCountdown, 1000);
 
-  // initial UI
   updatePublicCategoryHelp();
   renderDonPublic();
   updateAdminBadge();
