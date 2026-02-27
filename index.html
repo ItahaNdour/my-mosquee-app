@@ -9,11 +9,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-  <link rel="stylesheet" href="styles.css?v=10"/>
+  <link rel="stylesheet" href="styles.css?v=11"/>
 </head>
 
 <body>
   <header class="card header">
+    <!-- Dark mode -->
+    <button id="theme-toggle" class="icon-btn icon-btn-left" title="Mode sombre" aria-label="Mode sombre">
+      <i class="fa-solid fa-moon"></i>
+    </button>
+
+    <!-- Admin -->
     <button id="admin-button" class="icon-btn" title="Administration" aria-label="Administration">
       <i class="fa-solid fa-user-shield"></i>
       <span id="admin-badge" class="admin-badge" style="display:none">0</span>
@@ -147,19 +153,13 @@
       <div class="small don-hint">Après “J’ai donné”, ton don passe en <strong>attente</strong> jusqu’à confirmation par la mosquée.</div>
     </section>
 
-    <!-- OUTILS (SANS BOUSSOLE) -->
+    <!-- OUTILS (Qibla supprimé) -->
     <section class="card tools">
       <div class="tools-head">
         <h3>🧩 Outils</h3>
       </div>
 
-      <div class="tools-grid">
-        <div class="tool">
-          <div class="tool-title"><i class="fa-solid fa-location-arrow"></i> Qibla (Maps)</div>
-          <div class="small" id="qibla-maps-status">Utilise la ville de la mosquée.</div>
-          <button class="btn btn-ghost" id="qibla-maps-btn">Ouvrir dans Google Maps</button>
-        </div>
-
+      <div class="tools-grid tools-grid-one">
         <div class="tool">
           <div class="tool-title"><i class="fa-solid fa-hand"></i> Tasbih</div>
           <div class="tasbih">
@@ -215,6 +215,16 @@
       <input id="don-ref" placeholder="Ex: reçu Wave, note…"/>
 
       <button id="don-confirm" class="save" style="margin-top:12px;background:var(--green)">Confirmer</button>
+    </div>
+  </div>
+
+  <!-- POPUP CENTRE (OK + auto 10s) -->
+  <div id="modal-popup" class="modal" role="dialog" aria-modal="true">
+    <div class="box popup-box">
+      <h3 id="popup-title">Merci 🙏</h3>
+      <p id="popup-text" class="popup-text">—</p>
+      <button id="popup-ok" class="save" style="background:var(--green)">OK</button>
+      <div class="small" style="margin-top:10px; text-align:center">Ce message se ferme aussi automatiquement.</div>
     </div>
   </div>
 
@@ -278,6 +288,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>
