@@ -11,23 +11,47 @@ body{
   background:linear-gradient(180deg,var(--sand),var(--sand-2));
   min-height:100vh;
   display:flex; flex-direction:column; align-items:center;
-  padding:12px 12px 92px;
+  padding:12px 12px 84px;
 }
 
 .card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow)}
 .header,.main{width:100%; max-width:520px}
-
 .muted{color:var(--muted)}
 .small{font-size:12px; color:var(--muted)}
 
 .header{padding:12px; text-align:center; position:relative}
 .icon-btn{
   position:absolute; top:10px; right:10px;
-  width:42px; height:42px; border:none; border-radius:12px;
-  background:var(--green); color:#fff; display:grid; place-items:center; cursor:pointer
+  width:42px; height:42px;
+  border:none; border-radius:12px;
+  background:var(--green); color:#fff;
+  display:grid; place-items:center;
+  cursor:pointer;
+}
+.admin-badge{
+  position:absolute;
+  top:-6px; right:-6px;
+  background:var(--accent);
+  color:#fff;
+  border-radius:999px;
+  padding:2px 6px;
+  font-size:11px;
+  font-weight:900;
+  line-height:1.2;
 }
 
-.title{margin:6px 0 2px; font-size:22px; color:var(--green); font-weight:800}
+.title{margin:6px 0 2px; font-size:22px; color:var(--green); font-weight:900}
+
+.mosque-locked{
+  margin:10px auto 4px;
+  display:inline-flex; gap:8px; align-items:center;
+  background:#f4faf8;
+  box-shadow:inset 0 0 0 1px #e3f0eb;
+  border-radius:999px;
+  padding:8px 12px;
+  font-weight:900;
+  color:#1f5e53;
+}
 
 .sel-row{
   display:flex; justify-content:center; align-items:center;
@@ -39,16 +63,14 @@ body{
   padding:10px 10px;
   border:1px solid #e5e7eb;
   border-radius:12px;
-  font-weight:700;
+  font-weight:800;
   background:#fff;
 }
 
 .dates{display:grid; gap:2px; margin-top:2px}
-
 .clock{
   display:inline-flex; align-items:center; justify-content:center;
-  background:var(--green);
-  color:#fff;
+  background:var(--green); color:#fff;
   padding:10px 14px;
   border-radius:14px;
   margin:10px 0 8px;
@@ -67,7 +89,7 @@ body{
 .next-name{color:var(--green-2); font-weight:900; font-size:14px}
 .next-timer{color:var(--accent); font-weight:900; font-size:14px}
 
-/* Ramadan - compact, vert */
+/* Ramadan - vert compact */
 .ramadan{
   margin-top:10px;
   padding:12px;
@@ -94,15 +116,14 @@ body{
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);
   text-align:center;
 }
-.ramadan-box-title{font-weight:800; color:rgba(255,255,255,.9); font-size:13px}
+.ramadan-box-title{font-weight:900; color:rgba(255,255,255,.92); font-size:13px}
 .ramadan-box-time{font-weight:900; font-size:20px; margin-top:6px}
-@media (max-width:360px){
-  .ramadan-grid{grid-template-columns:1fr}
-}
+@media (max-width:360px){ .ramadan-grid{grid-template-columns:1fr} }
 
 /* Main */
 .main{margin-top:10px; display:grid; gap:10px}
 
+/* list */
 .list .row{
   display:flex; justify-content:space-between; align-items:center;
   padding:12px 14px;
@@ -113,29 +134,45 @@ body{
 .name{font-weight:800; font-size:14px}
 .time{font-weight:900; color:var(--green); font-size:14px}
 
-/* Jumua + chourouk */
 .duo{padding:12px}
 .duo-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px}
-.duo-item{background:#f4faf8; border-radius:14px; padding:10px; text-align:center; box-shadow:inset 0 0 0 1px #e3f0eb}
+.duo-item{
+  background:#f4faf8;
+  border-radius:14px;
+  padding:10px;
+  text-align:center;
+  box-shadow:inset 0 0 0 1px #e3f0eb
+}
 .duo-title{font-weight:900; color:#1f5e53; font-size:13px}
 .duo-time{font-weight:900; font-size:18px; margin-top:6px; color:#134e42}
-@media (max-width:360px){
-  .duo-grid{grid-template-columns:1fr}
-}
+@media (max-width:360px){ .duo-grid{grid-template-columns:1fr} }
 
 /* Don public */
 .don-public{padding:12px}
 .section-title{display:flex; align-items:baseline; justify-content:space-between; gap:10px}
 .section-title h3{margin:0; color:#1f5e53; font-size:16px}
-.don-lines{list-style:none; padding:0; margin:8px 0 0}
-.don-lines li{
-  display:flex; justify-content:space-between; align-items:center;
-  padding:8px 0; border-top:1px solid #eef2f7; font-weight:800;
+
+.don-public-kpis{
+  margin-top:10px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
 }
-.don-lines li:first-child{border-top:none}
+.kpi{
+  background:#f8fffd;
+  border:1px dashed #bfe4db;
+  border-radius:14px;
+  padding:10px 12px;
+}
+.kpi-label{font-size:12px; color:#1f5e53; font-weight:900}
+.kpi-val{margin-top:4px; font-weight:900; color:#134e42}
+@media (max-width:360px){ .don-public-kpis{grid-template-columns:1fr} }
+
+.progress{height:10px; background:#e8f4f1; border-radius:999px; overflow:hidden; margin-top:10px}
+.progress>span{display:block; height:100%; background:#16a34a; width:0%}
 
 .don-category{
-  margin-top:10px;
+  margin-top:12px;
   background:#f8fffd;
   border:1px dashed #bfe4db;
   border-radius:14px;
@@ -151,6 +188,13 @@ body{
   border-radius:12px;
   font-weight:900;
 }
+
+.don-lines{list-style:none; padding:0; margin:10px 0 0}
+.don-lines li{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:8px 0; border-top:1px solid #eef2f7; font-weight:900;
+}
+.don-lines li:first-child{border-top:none}
 
 .don-cta{
   display:flex;
@@ -170,34 +214,9 @@ body{
 .btn-primary{background:var(--green); color:#fff}
 .btn-ghost{background:#fff; color:var(--green); border:1px solid #cfe7e1}
 
-/* Admin dons */
-.don-admin{padding:12px; display:none}
-.don-admin-title{margin:0 0 8px; color:#1f5e53}
-.kpis{display:flex; justify-content:space-between; gap:8px; margin-top:6px; font-weight:900; flex-wrap:wrap}
-.kpis div{background:#f8fffd; border:1px dashed #bfe4db; border-radius:10px; padding:6px 8px}
-.progress{height:10px; background:#e8f4f1; border-radius:999px; overflow:hidden}
-.progress>span{display:block; height:100%; background:#16a34a; width:0%}
-.quick-amounts{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-start; margin-top:10px}
-.chip{
-  padding:8px 10px;
-  border-radius:999px;
-  border:1px solid #cfe7e1;
-  background:#fff;
-  color:var(--green);
-  font-weight:900;
-  cursor:pointer;
-}
-.add-don{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
-.add-don input,.add-don select{padding:10px; border:1px solid #e5e7eb; border-radius:12px; flex:1; min-width:120px}
-.add-don .btn{flex:0 0 auto}
-.table{width:100%; border-collapse:collapse; margin-top:8px}
-.table th,.table td{border-bottom:1px solid #eef2f7; padding:8px; font-size:12px}
-.badge{padding:3px 6px; border-radius:999px; font-weight:900; font-size:11px}
-.b-ok{background:#dcfce7; color:#14532d}
-.b-p{background:#fff7ed; color:#7c2d12}
-.b-no{background:#fee2e2; color:#7f1d1d}
+.don-hint{margin-top:8px}
 
-/* Outils (Tasbih + Qibla maps si présent) */
+/* Tools */
 .tools{padding:12px}
 .tools-head{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
 .tools-head h3{margin:0; color:#1f5e53}
@@ -262,7 +281,6 @@ body{
   .nav-btn span{display:none}
   .nav-btn i{font-size:20px}
 }
-
 .notif{
   position:absolute; top:-2px; right:10px;
   background:var(--accent); color:#fff;
@@ -277,14 +295,32 @@ body{
 #names-list li{display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid #eef2f7}
 #names-list li:last-child{border-bottom:none}
 
+.m-label{display:block; margin-top:12px; font-weight:900; color:#1f5e53}
+.modal input,.modal select,.modal textarea{
+  width:100%;
+  padding:10px;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  margin-top:6px;
+}
+
 /* Admin */
 .admin label{display:block; font-weight:900; color:#1f5e53; margin-top:12px}
 .admin input,.admin select,.admin textarea{width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:12px}
 .admin .row{display:flex; gap:10px; flex-wrap:wrap}
 .save{margin-top:14px; width:100%; padding:12px; border:none; border-radius:12px; background:var(--accent); color:#fff; font-weight:900; cursor:pointer}
+
+.table{width:100%; border-collapse:collapse; margin-top:8px}
+.table th,.table td{border-bottom:1px solid #eef2f7; padding:8px; font-size:12px}
+.badge{padding:3px 6px; border-radius:999px; font-weight:900; font-size:11px}
+.b-ok{background:#dcfce7; color:#14532d}
+.b-p{background:#fff7ed; color:#7c2d12}
+.b-no{background:#fee2e2; color:#7f1d1d}
+
+/* status toast */
 .status{padding:10px 12px; border-radius:12px; color:#fff; display:none}
 
-/* Desktop enhancement */
+/* Desktop only */
 @media (min-width:768px){
   body{padding:20px 16px 96px}
   .title{font-size:26px}
