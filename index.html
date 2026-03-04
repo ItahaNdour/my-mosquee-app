@@ -1,6 +1,6 @@
 <!DOCTYPE html>
-<html lang="fr"> 
-  <head>
+<html lang="fr">
+<head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>MyMosque</title>
@@ -9,16 +9,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-
-  <link rel="stylesheet" href="styles.css?v=100"/>
-
-  <!-- Firebase (CDN - compatible GitHub Pages) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <link rel="stylesheet" href="styles.css?v=11"/>
 </head>
 
 <body>
   <header class="card header">
+    <!-- Dark mode -->
+    <button id="theme-toggle" class="icon-btn icon-btn-left" title="Mode sombre" aria-label="Mode sombre">
+      <i class="fa-solid fa-moon"></i>
+    </button>
+
+    <!-- Admin -->
     <button id="admin-button" class="icon-btn" title="Administration" aria-label="Administration">
       <i class="fa-solid fa-user-shield"></i>
       <span id="admin-badge" class="admin-badge" style="display:none">0</span>
@@ -26,7 +27,13 @@
 
     <h1 id="mosque-name" class="title">Mosquée</h1>
 
-    <!-- Mosquée selector : caché par défaut (public ne switch pas) -->
+    <!-- Public: mosquée verrouillée -->
+    <div id="mosque-locked" class="mosque-locked" style="display:none">
+      <i class="fa-solid fa-lock"></i>
+      <span id="mosque-locked-name">—</span>
+    </div>
+
+    <!-- Admin/Super: selector visible -->
     <div class="sel-row" id="mosque-select-row" style="display:none">
       <i class="fa-solid fa-mosque muted" aria-hidden="true"></i>
       <select id="mosque-selector" title="Mosquée"></select>
@@ -42,11 +49,11 @@
     </div>
 
     <div class="next" aria-live="polite">
-      <span class="next-name" id="next-prayer-name">Chargement…</span>
+      <span class="next-name" id="next-prayer-name">Chargement...</span>
       <span class="next-timer" id="countdown">--:--:--</span>
     </div>
 
-    <!-- Ramadan (compact) -->
+    <!-- Ramadan (compact, vert) -->
     <section class="card ramadan" id="ramadan-card" style="display:none">
       <div class="ramadan-top">
         <div class="ramadan-left">
@@ -63,12 +70,8 @@
 
       <div class="ramadan-grid">
         <div class="ramadan-box">
-          <div class="ramadan-box-title">Imsak (Fajr)</div>
-          <div class="ramadan-box-time" id="ramadan-imsak">--:--</div>
-        </div>
-        <div class="ramadan-box">
-          <div class="ramadan-box-title">Chourouk</div>
-          <div class="ramadan-box-time" id="ramadan-shuruq">--:--</div>
+          <div class="ramadan-box-title">Suhoor (Fajr)</div>
+          <div class="ramadan-box-time" id="ramadan-suhoor">--:--</div>
         </div>
         <div class="ramadan-box">
           <div class="ramadan-box-title">Iftar (Maghrib)</div>
@@ -79,6 +82,7 @@
   </header>
 
   <main class="main">
+    <!-- Horaires -->
     <section class="card list" aria-label="Horaires de prière">
       <div class="row" id="fajr-item"><span class="name" id="fajr-name">Souba (Fajr)</span><span class="time" id="fajr-time">--:--</span></div>
       <div class="row" id="dhuhr-item"><span class="name" id="dhuhr-name">Tisbar (Dhuhr)</span><span class="time" id="dhuhr-time">--:--</span></div>
@@ -91,7 +95,7 @@
       <div class="duo-grid">
         <div class="duo-item">
           <div class="duo-title">Jumua</div>
-          <div class="duo-time" id="jumua-time">--:--</div>
+          <div class="duo-time" id="jumua-time">13:30</div>
         </div>
         <div class="duo-item">
           <div class="duo-title">Chourouk</div>
@@ -100,26 +104,27 @@
       </div>
     </section>
 
-    <!-- DON PUBLIC -->
+    <!-- DON PUBLIC (KPIs visibles + barre mois) -->
     <section class="card don-public">
       <div class="section-title">
         <h3>💰 Faire un don</h3>
-        <span class="small">Wave / Orange</span>
+        <span class="small">Wave / Orange / Espèces</span>
       </div>
 
-      <!-- KPI PUBLIC (visible) -->
-      <div class="don-kpis">
-        <div class="don-kpi">
-          <div class="small">Objectif (mois)</div>
-          <div class="don-kpi-val"><span id="don-public-goal">0</span> CFA</div>
+      <div class="don-public-kpis">
+        <div class="kpi">
+          <div class="kpi-label">Objectif (mois)</div>
+          <div class="kpi-val"><span id="don-public-goal">0</span> CFA</div>
         </div>
-        <div class="don-kpi">
-          <div class="small">Collecté (mois)</div>
-          <div class="don-kpi-val"><span id="don-public-month">0</span> CFA</div>
+        <div class="kpi">
+          <div class="kpi-label">Collecté (mois)</div>
+          <div class="kpi-val"><span id="don-public-month">0</span> CFA</div>
         </div>
       </div>
 
-      <div class="progress" aria-label="Progression collecte"><span id="don-public-bar"></span></div>
+      <div class="progress" aria-label="Progression collecte">
+        <span id="don-public-bar"></span>
+      </div>
 
       <div class="don-category">
         <div class="don-category-label">
@@ -134,8 +139,9 @@
       </div>
 
       <ul class="don-lines">
-        <li><span><i class="fa-solid fa-wallet"></i> Wave</span><strong id="wave-number">—</strong></li>
-        <li><span><i class="fa-solid fa-mobile-screen-button"></i> Orange</span><strong id="orange-number">—</strong></li>
+        <li><span><i class="fa-solid fa-wallet" style="color:#0ea5e9"></i> Wave</span><strong id="wave-number">—</strong></li>
+        <li><span><i class="fa-solid fa-mobile-screen-button" style="color:#f97316"></i> Orange</span><strong id="orange-number">—</strong></li>
+        <li><span><i class="fa-solid fa-hand-holding-heart" style="color:#16a34a"></i> Espèces</span><strong id="cash-info">Mosquée</strong></li>
       </ul>
 
       <div class="don-cta">
@@ -144,18 +150,16 @@
         <button class="btn btn-ghost" id="btn-claimed"><i class="fa-brands fa-whatsapp"></i> J’ai donné</button>
       </div>
 
-      <div class="small don-hint">
-        Après “J’ai donné”, ton don passe en attente jusqu’à confirmation par la mosquée.
-      </div>
+      <div class="small don-hint">Après “J’ai donné”, ton don passe en <strong>attente</strong> jusqu’à confirmation par la mosquée.</div>
     </section>
 
-    <!-- OUTILS -->
+    <!-- OUTILS (Qibla supprimé) -->
     <section class="card tools">
       <div class="tools-head">
         <h3>🧩 Outils</h3>
       </div>
 
-      <div class="tools-grid">
+      <div class="tools-grid tools-grid-one">
         <div class="tool">
           <div class="tool-title"><i class="fa-solid fa-hand"></i> Tasbih</div>
           <div class="tasbih">
@@ -173,6 +177,7 @@
     <div id="status" class="status"></div>
   </main>
 
+  <!-- NAV BOTTOM -->
   <footer class="nav">
     <button id="events-btn" class="nav-btn"><i class="fa-solid fa-calendar-alt"></i><span>Évén.</span></button>
     <button id="names-btn" class="nav-btn"><i class="fa-solid fa-kaaba"></i><span>Noms</span></button>
@@ -189,46 +194,46 @@
   <div id="modal-names" class="modal"><div class="box"><span class="close">&times;</span><h3 id="names-header">Les 99 Noms d'Allah</h3><ul id="names-list"></ul></div></div>
   <div id="modal-about" class="modal"><div class="box"><span class="close">&times;</span><h3>À propos</h3><p><strong>Contact :</strong> <span id="about-contact-name">—</span><br><strong>Téléphone :</strong> <span id="about-contact-phone">—</span></p></div></div>
 
-  <!-- Modal don (mini formulaire) -->
+  <!-- MINI FORM DON (public) -->
   <div id="modal-don" class="modal" role="dialog" aria-modal="true">
     <div class="box">
       <span class="close">&times;</span>
       <h3>Confirmation du don</h3>
-      <p class="small">Remplis ces infos, puis la mosquée confirmera.</p>
+      <div class="small" style="margin-top:-6px">Remplis ces infos, puis la mosquée confirmera.</div>
 
-      <div class="add-don">
-        <input id="don-amt" type="number" placeholder="Montant (CFA)"/>
-        <select id="don-category">
-          <option>Zakat</option>
-          <option selected>Sadaqa</option>
-          <option>Travaux</option>
-        </select>
-        <input id="don-ref" placeholder="Référence / Remarque"/>
-      </div>
+      <label class="m-label">Montant (CFA)</label>
+      <input id="don-amount" type="number" placeholder="Ex: 1000"/>
 
-      <div class="don-cta">
-        <button class="btn btn-primary" id="don-confirm">Confirmer</button>
-        <button class="btn btn-ghost" id="don-cancel">Annuler</button>
-      </div>
+      <label class="m-label">Catégorie</label>
+      <select id="don-category">
+        <option>Zakat</option>
+        <option selected>Sadaqa</option>
+        <option>Travaux</option>
+      </select>
+
+      <label class="m-label">Référence / Remarque</label>
+      <input id="don-ref" placeholder="Ex: reçu Wave, note…"/>
+
+      <button id="don-confirm" class="save" style="margin-top:12px;background:var(--green)">Confirmer</button>
     </div>
   </div>
 
-  <!-- Popup merci -->
-  <div id="modal-thanks" class="modal">
-    <div class="box">
-      <span class="close">&times;</span>
-      <h3>Merci</h3>
-      <p id="thanks-text">—</p>
-      <button class="btn btn-primary" id="thanks-ok">OK</button>
-      <p class="small">Ce message se ferme aussi automatiquement.</p>
+  <!-- POPUP CENTRE (OK + auto 10s) -->
+  <div id="modal-popup" class="modal" role="dialog" aria-modal="true">
+    <div class="box popup-box">
+      <h3 id="popup-title">Merci 🙏</h3>
+      <p id="popup-text" class="popup-text">—</p>
+      <button id="popup-ok" class="save" style="background:var(--green)">OK</button>
+      <div class="small" style="margin-top:10px; text-align:center">Ce message se ferme aussi automatiquement.</div>
     </div>
   </div>
 
-  <!-- ADMIN -->
+  <!-- ADMIN PANEL -->
   <div id="modal-admin" class="modal" role="dialog" aria-modal="true">
     <div class="box admin">
       <span class="close">&times;</span>
       <h3>Panneau d'administration</h3>
+      <p class="small" id="role-hint"></p>
 
       <div class="row" id="super-row" style="display:none">
         <div style="flex:1">
@@ -237,7 +242,7 @@
         </div>
         <div style="flex:1">
           <label>Nouvelle mosquée (nom)</label>
-          <input id="adm-new-name" placeholder="Ex: Mosquée Medina"/>
+          <input id="adm-new-name" placeholder="Ex: Medina Centre"/>
         </div>
         <div>
           <label>&nbsp;</label>
@@ -249,11 +254,8 @@
         </div>
       </div>
 
-      <label>Nom de la mosquée</label>
-      <input id="adm-name"/>
-
-      <label>Ville (fallback si GPS refusé)</label>
-      <select id="adm-city"></select>
+      <label>Nom de la mosquée</label><input id="adm-name"/>
+      <label>Ville (API)</label><select id="adm-city"></select>
 
       <div class="row">
         <div style="flex:1"><label>Wave Money</label><input id="adm-wave"/></div>
@@ -265,33 +267,27 @@
         <div style="flex:1"><label>Téléphone WhatsApp</label><input id="adm-phone"/></div>
       </div>
 
-      <label>Jumua (HH:MM)</label>
-      <input id="adm-jumua" type="time"/>
-
-      <label>Annonces</label>
-      <textarea id="adm-ann" rows="3"></textarea>
-
-      <label>Événements (un par ligne : Titre | Date)</label>
-      <textarea id="adm-events" rows="4"></textarea>
+      <label>Jumua (HH:MM)</label><input id="adm-jumua" type="time"/>
+      <label>Annonces</label><textarea id="adm-ann" rows="3"></textarea>
+      <label>Événements (un par ligne : Titre | Date)</label><textarea id="adm-events" rows="4"></textarea>
 
       <h3 style="margin-top:18px">Collecte (public)</h3>
-      <label>Objectif mensuel (CFA)</label>
-      <input id="adm-goal" type="number" placeholder="100000"/>
+      <div class="row">
+        <div style="flex:1"><label>Objectif mensuel (CFA)</label><input id="adm-goal" type="number" placeholder="500000"/></div>
+      </div>
 
       <h3 style="margin-top:18px">Demandes de dons (à valider)</h3>
-      <p class="small">Les dons ne comptent dans le total qu’après validation.</p>
+      <div class="small">Les dons ne comptent dans le total qu’après validation.</div>
 
-      <table class="table" id="don-table">
+      <table class="table" id="req-table" style="margin-top:8px">
         <thead><tr><th>Date</th><th>Montant</th><th>Cat.</th><th>Réf.</th><th>Statut</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
 
       <button id="save" class="save"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button>
-      <p class="small" id="role-hint"></p>
     </div>
   </div>
 
-  <script src="app.js?v=100"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>
-
