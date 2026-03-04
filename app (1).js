@@ -1,4 +1,4 @@
-/* =========================
+/* ======================
    ACCÈS / RÔLES
 ========================= */
 const ADMIN_PASSWORD = '1234';
@@ -986,3 +986,4 @@ function setup() {
 }
 
 document.addEventListener('DOMContentLoaded', setup);
+
