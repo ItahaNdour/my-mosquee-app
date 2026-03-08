@@ -1,23 +1,4 @@
 // /app.js
-/**
- * MyMosque Web (GitHub Pages) — Firestore sync + multi-mosquées + droits admin
- *
- * Data model (Firestore):
- * - mosques/{mosqueId}
- *   - public fields: name, city, wave, orange, contact, phone, jumua, ann, events, method, school, offsets
- *   - stats: { monthlySums: { "YYYY-MM": number } }
- *   - goals: { monthly: number }
- * - mosques/{mosqueId}/donations/{donId}
- *   - amount:number, category:string, ref:string, status:"pending"|"confirmed"|"rejected"
- *   - createdAt: serverTimestamp
- *   - confirmedAt: serverTimestamp (optional)
- * - users/{uid}
- *   - role: "admin"|"super"
- *   - mosqueId: string (required if role=admin)
- *
- * Security: see rules section (at bottom of message).
- */
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
   getAuth,
@@ -30,12 +11,10 @@ import {
   doc,
   getDoc,
   setDoc,
-  updateDoc,
   addDoc,
   deleteDoc,
   collection,
   query,
-  where,
   orderBy,
   limit,
   getDocs,
@@ -44,7 +23,7 @@ import {
   runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-/* Firebase */
+/* ===== Firebase config (doit matcher TON projet) ===== */
 const firebaseConfig = {
   apiKey: "AIzaSyCuQJaDJUo37WeFh61DAFFhN30N0ewAAsQ",
   authDomain: "mymosquee-web.firebaseapp.com",
@@ -55,13 +34,19 @@ const firebaseConfig = {
   measurementId: "G-PFWSE9HB05",
 };
 
+/* Debug: voir la clé réellement utilisée */
+window.__MM_FIREBASE_API_KEY = firebaseConfig.apiKey;
+console.log("[MyMosque] apiKey used by app.js =", window.__MM_FIREBASE_API_KEY);
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* ====== EXISTING CONSTS (inchangés) ====== */
+/* ===== Roles ===== */
 let SESSION_ROLE = "guest"; // guest | admin | super
+let currentUser = null; // { uid, role, mosqueId }
 
+/* ===== Constants (inchangés) ===== */
 const PRAYER_NAMES = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
 const DISPLAY = {
   Fajr: { local: "Souba", ar: "Fajr" },
@@ -93,11 +78,9 @@ const DEFAULT_MOSQUES = [
 
 const MOCK = { Fajr: "05:45", Sunrise: "07:00", Dhuhr: "13:30", Asr: "16:45", Maghrib: "19:05", Isha: "20:30" };
 
-// Ramadan
 const RAMADAN_START_DATE = "2026-02-18";
 const RAMADAN_TOTAL_DAYS = 30;
 
-// Dons
 const DON_CATEGORIES = ["Zakat", "Sadaqa", "Travaux"];
 const DON_CATEGORY_HELP = {
   Zakat: "Zakat : obligation (selon conditions).",
@@ -111,22 +94,35 @@ let timingsData = null;
 let lastAlertShown = "";
 let playedFor = "";
 
-/* ====== NEW: state Firestore ====== */
-const LOCAL_MIGRATION_KEY = "firestore_migrated_v1";
-let currentUser = null; // { uid, role, mosqueId }
-let mosquesCache = []; // list for super only
-let activeMosque = null; // { id, ...fields }
+/* ===== State ===== */
+let mosquesCache = [];
+let activeMosque = null;
+
 let unsubMosque = null;
 let unsubDonations = null;
+let latestDonations = [];
 
-/* Utils */
+const LOCAL_MIGRATION_KEY = "firestore_migrated_v1";
+
+/* ===== Helpers ===== */
 function showStatus(msg, bg) {
   const node = el("status");
   if (!node) return;
   node.textContent = msg;
   node.style.background = bg || "#2f7d6d";
   node.style.display = "block";
-  setTimeout(() => { node.style.display = "none"; }, 2500);
+  setTimeout(() => { node.style.display = "none"; }, 3000);
+}
+
+function openModal(id) { el(id).style.display = "block"; }
+function closeAll() { document.querySelectorAll(".modal").forEach((m) => { m.style.display = "none"; }); }
+function bindModals() {
+  document.querySelectorAll(".modal .close").forEach((x) => x.addEventListener("click", closeAll));
+  window.addEventListener("click", (e) => {
+    if (e.target && e.target.classList && e.target.classList.contains("modal")) closeAll();
+  });
+  const ok = el("popup-ok");
+  if (ok) ok.onclick = () => closeAll();
 }
 
 let popupTimer = null;
@@ -135,11 +131,9 @@ function showPopup(msg, title = "Merci 🙏") {
   const p = el("popup-text");
   if (t) t.textContent = title;
   if (p) p.textContent = msg;
-
   openModal("modal-popup");
-
   if (popupTimer) clearTimeout(popupTimer);
-  popupTimer = setTimeout(() => { closeAll(); }, 10000);
+  popupTimer = setTimeout(() => closeAll(), 10000);
 }
 
 function escapeHtml(s) {
@@ -164,12 +158,6 @@ function ddmmyy(iso) {
   return `${dd}/${mm}/${yy}`;
 }
 
-function getUrlMosqueId() {
-  const u = new URL(window.location.href);
-  const m = (u.searchParams.get("m") || "").trim();
-  return m || null;
-}
-
 function todayKey() {
   const d = new Date();
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
@@ -179,7 +167,26 @@ function ymKey() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-/* THEME */
+function getUrlMosqueId() {
+  const u = new URL(window.location.href);
+  const m = (u.searchParams.get("m") || "").trim();
+  return m || null;
+}
+
+function resolveMosqueId() {
+  const forced = getUrlMosqueId();
+  if (forced) return forced;
+  if (currentUser?.role === "admin" && currentUser?.mosqueId) return currentUser.mosqueId;
+  return localStorage.getItem("currentMosqueId") || DEFAULT_MOSQUES[0].id;
+}
+
+function setCurrentMosqueId(id) { localStorage.setItem("currentMosqueId", id); }
+
+function mosqueDocRef(mosqueId) { return doc(db, "mosques", mosqueId); }
+function donationsColRef(mosqueId) { return collection(db, "mosques", mosqueId, "donations"); }
+function usersDocRef(uid) { return doc(db, "users", uid); }
+
+/* ===== Theme ===== */
 function applyTheme(theme) {
   document.body.classList.toggle("dark", theme === "dark");
   localStorage.setItem("theme", theme);
@@ -195,55 +202,59 @@ function initTheme() {
   };
 }
 
-/* ====== Firestore helpers ====== */
-function mosqueDocRef(mosqueId) {
-  return doc(db, "mosques", mosqueId);
+/* ===== Login “Téléphone + PIN” (pseudo-email) ===== */
+const PSEUDO_DOMAIN = "mymosque.sn";
+
+function normalizePhone(input) {
+  const raw = String(input || "").trim();
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length >= 9) return digits.slice(-9); // SN: 9 digits
+  return digits;
 }
-function donationsColRef(mosqueId) {
-  return collection(db, "mosques", mosqueId, "donations");
-}
-function usersDocRef(uid) {
-  return doc(db, "users", uid);
+function phoneToEmail(phone9) {
+  const p = normalizePhone(phone9);
+  return `admin-${p}@${PSEUDO_DOMAIN}`;
 }
 
+async function promptLoginPhonePin() {
+  const phoneOrEmail = prompt("Admin - Téléphone (9 chiffres) ou Email :");
+  if (!phoneOrEmail) return null;
+  const pin = prompt("Code (PIN) :");
+  if (!pin) return null;
+
+  const email = phoneOrEmail.includes("@") ? phoneOrEmail.trim() : phoneToEmail(phoneOrEmail);
+  return signInWithEmailAndPassword(auth, email, pin);
+}
+
+/* ===== Users profile ===== */
+async function loadUserProfile(uid) {
+  const snap = await getDoc(usersDocRef(uid));
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  const role = data.role;
+  const mosqueId = data.mosqueId || null;
+  if (role !== "admin" && role !== "super") return null;
+  if (role === "admin" && !mosqueId) return null;
+  return { uid, role, mosqueId };
+}
+
+/* ===== UI mosque select ===== */
 function canSelectMosque() {
   const forced = !!getUrlMosqueId();
-  const isSuper = currentUser?.role === "super";
-  return isSuper && !forced;
+  return currentUser?.role === "super" && !forced;
 }
 
-function resolveMosqueId() {
-  const forced = getUrlMosqueId();
-  if (forced) return forced;
-
-  if (currentUser?.role === "admin" && currentUser?.mosqueId) return currentUser.mosqueId;
-
-  const stored = localStorage.getItem("currentMosqueId");
-  if (stored) return stored;
-
-  return DEFAULT_MOSQUES[0].id;
-}
-
-function setCurrentMosqueId(id) {
-  localStorage.setItem("currentMosqueId", id);
-}
-
-/* ====== Multi-mosquées UI ====== */
 function refreshMosqueAccessUI() {
-  const forced = !!getUrlMosqueId();
   const locked = el("mosque-locked");
   const lockedName = el("mosque-locked-name");
   const row = el("mosque-select-row");
-
-  const canSelect = canSelectMosque();
-  if (canSelect) {
+  if (canSelectMosque()) {
     locked.style.display = "none";
     row.style.display = "flex";
   } else {
     row.style.display = "none";
     locked.style.display = "inline-flex";
     lockedName.textContent = activeMosque?.name || "—";
-    if (forced) locked.querySelector("i")?.classList?.add?.("fa-lock");
   }
 }
 
@@ -260,9 +271,7 @@ function populateMosqueSelector() {
     sel.appendChild(o);
   });
 
-  const curId = activeMosque?.id || resolveMosqueId();
-  sel.value = curId;
-
+  sel.value = activeMosque?.id || resolveMosqueId();
   sel.onchange = async (e) => {
     if (!canSelectMosque()) return;
     const id = e.target.value;
@@ -271,117 +280,13 @@ function populateMosqueSelector() {
   };
 }
 
-/* Modals */
-function openModal(id) { el(id).style.display = "block"; }
-function closeAll() { document.querySelectorAll(".modal").forEach((m) => { m.style.display = "none"; }); }
-
-function bindModals() {
-  document.querySelectorAll(".modal .close").forEach((x) => x.addEventListener("click", closeAll));
-  window.addEventListener("click", (e) => {
-    if (e.target && e.target.classList && e.target.classList.contains("modal")) closeAll();
-  });
-
-  const ok = el("popup-ok");
-  if (ok) ok.onclick = () => closeAll();
-}
-
-/* Events */
-function renderEvents() {
-  const box = el("events-list");
-  const events = Array.isArray(activeMosque?.events) ? activeMosque.events : [];
-  if (!events.length) { box.textContent = "—"; return; }
-
-  const wrap = document.createElement("div");
-  wrap.style.display = "grid";
-  wrap.style.gap = "8px";
-
-  events.forEach((ev) => {
-    const item = document.createElement("div");
-    item.style.border = "1px solid rgba(238,242,247,.9)";
-    item.style.borderRadius = "12px";
-    item.style.padding = "10px 12px";
-    item.innerHTML = `<div style="font-weight:900;color:#1f5e53">${escapeHtml(ev.title || "")}</div>
-                      <div class="small">${escapeHtml(ev.date || "")}</div>`;
-    wrap.appendChild(item);
-  });
-
-  box.innerHTML = "";
-  box.appendChild(wrap);
-}
-
-/* Ramadan */
-function formatFastingDurationShort(fajr, maghrib) {
-  if (!fajr || !maghrib) return "—";
-  const f = parseHM(fajr);
-  const m = parseHM(maghrib);
-  const start = f.h * 60 + f.m;
-  const end = m.h * 60 + m.m;
-  let dur = end - start;
-  if (dur < 0) dur += 24 * 60;
-  const hh = Math.floor(dur / 60);
-  const mm = dur % 60;
-  return `${hh}h ${String(mm).padStart(2, "0")}m`;
-}
-
-function renderRamadan() {
-  const card = el("ramadan-card");
-  if (!card) return;
-
-  const start = new Date(`${RAMADAN_START_DATE}T00:00:00`);
-  const now = new Date();
-  const msDay = 24 * 60 * 60 * 1000;
-  const dayIndex = Math.floor((now - start) / msDay) + 1;
-
-  if (dayIndex < 1 || dayIndex > RAMADAN_TOTAL_DAYS) {
-    card.style.display = "none";
-    return;
-  }
-
-  const left = RAMADAN_TOTAL_DAYS - dayIndex;
-  el("ramadan-sub").textContent = `${dayIndex} Ramadan • ${WEEKDAYS[now.getDay()]} ${now.getDate()} ${MONTHS[now.getMonth()]}`;
-  el("ramadan-day").textContent = `Jour ${dayIndex}/${RAMADAN_TOTAL_DAYS}`;
-  el("ramadan-left").textContent = left === 0 ? "Dernier jour" : `${left} j restants`;
-
-  const iftar = (timingsData && timingsData.Maghrib) ? timingsData.Maghrib : "--:--";
-  const suhoor = (timingsData && timingsData.Fajr) ? timingsData.Fajr : "--:--";
-  el("ramadan-iftar").textContent = iftar;
-  el("ramadan-suhoor").textContent = suhoor;
-  el("ramadan-duration").textContent = `Durée du jeûne: ${formatFastingDurationShort(suhoor, iftar)}`;
-
-  card.style.display = "block";
-}
-
-/* Sound */
-function playBeep(duration = 600, freq = 880) {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = "sine";
-    o.frequency.value = freq;
-    o.connect(g);
-    g.connect(ctx.destination);
-    g.gain.setValueAtTime(0.001, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
-    o.start();
-    setTimeout(() => {
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.05);
-      o.stop();
-      ctx.close();
-    }, duration);
-  } catch {}
-}
-function playChime() { playBeep(650, 740); navigator.vibrate && navigator.vibrate(150); }
-function playAdhan() { playBeep(1000, 660); }
-
-/* Header clock */
+/* ===== Clock / countdown ===== */
 function updateClock() {
   const n = new Date();
   el("current-time").textContent = [n.getHours(), n.getMinutes(), n.getSeconds()].map((v) => String(v).padStart(2, "0")).join(":");
   el("gregorian-date").textContent = `${WEEKDAYS[n.getDay()]} ${n.getDate()} ${MONTHS[n.getMonth()]} ${n.getFullYear()}`;
 }
 
-/* Next prayer */
 function fmt(ms) {
   if (ms < 0) return "00:00:00";
   const t = Math.floor(ms / 1000);
@@ -439,23 +344,9 @@ function updateNextCountdown() {
 
   const item = el(`${name.toLowerCase()}-item`);
   if (item) item.classList.add("current");
-
-  const delta = time - now;
-  const five = 5 * 60 * 1000;
-
-  if (delta > 0 && delta <= five && lastAlertShown !== name) {
-    playChime();
-    lastAlertShown = name;
-    showStatus(`Dans 5 min : ${DISPLAY[name].local}.`, "#1f5e53");
-  }
-  if (delta <= 900 && playedFor !== name) {
-    playAdhan();
-    playedFor = name;
-  }
-  if (delta > 1500 && name === playedFor) playedFor = "";
 }
 
-/* API timings */
+/* ===== API timings ===== */
 function mockData() {
   return { timings: MOCK, date: { hijri: { day: "3", month: { ar: "Rabi' al-Awwal" }, year: "1447" } } };
 }
@@ -489,7 +380,7 @@ async function fetchTimings() {
   }
 }
 
-/* Dons (Firestore) */
+/* ===== Donations (Firestore) ===== */
 function normalizeCategory(cat) {
   const c = String(cat || "").trim();
   if (c === "Travaux / Entretien") return "Travaux";
@@ -506,20 +397,16 @@ function updatePublicCategoryHelp() {
   if (help) help.textContent = DON_CATEGORY_HELP[cat] || "—";
 }
 
-function getMonthlyGoal(m) {
-  return Number(m?.goals?.monthly ?? 500000);
-}
+function getMonthlyGoal(m) { return Number(m?.goals?.monthly ?? 500000); }
 function getMonthlySum(m) {
   const sums = m?.stats?.monthlySums || {};
   return Number(sums[ymKey()] ?? 0);
 }
 
 function renderDonPublic() {
-  const m = activeMosque;
-  if (!m) return;
-
-  const goal = getMonthlyGoal(m);
-  const month = getMonthlySum(m);
+  if (!activeMosque) return;
+  const goal = getMonthlyGoal(activeMosque);
+  const month = getMonthlySum(activeMosque);
 
   el("don-public-goal").textContent = goal.toLocaleString("fr-FR");
   el("don-public-month").textContent = month.toLocaleString("fr-FR");
@@ -537,11 +424,9 @@ function openDonModal() {
 
 async function submitDonationRequest() {
   if (!activeMosque) return;
-
   const amount = parseInt(el("don-amount").value, 10) || 0;
   const category = normalizeCategory(el("don-category").value);
   const ref = String(el("don-ref").value || "").trim();
-
   if (amount <= 0) return alert("Montant invalide");
 
   await addDoc(donationsColRef(activeMosque.id), {
@@ -557,17 +442,24 @@ async function submitDonationRequest() {
   showPopup(`Merci pour votre don de ${amount.toLocaleString("fr-FR")} CFA.\nIl est en attente de confirmation.`, "Merci 🙏");
 }
 
-function formatDonationRow(d) {
-  const ts = d.createdAt?.toDate ? d.createdAt.toDate().toISOString() : (d.ts || new Date().toISOString());
-  const status = d.status;
+function pendingCount() { return latestDonations.filter((x) => x.status === "pending").length; }
+function updateAdminBadge() {
+  const b = el("admin-badge");
+  const n = pendingCount();
+  if (!b) return;
+  if (n > 0) { b.textContent = String(n); b.style.display = "inline-block"; }
+  else b.style.display = "none";
+}
 
-  const st = status === "confirmed"
+function formatDonationRow(d) {
+  const ts = d.createdAt?.toDate ? d.createdAt.toDate().toISOString() : new Date().toISOString();
+  const st = d.status === "confirmed"
     ? '<span class="badge b-ok">Confirmé</span>'
-    : (status === "rejected"
+    : (d.status === "rejected"
       ? '<span class="badge b-no">Annulé</span>'
       : '<span class="badge b-p">En attente</span>');
 
-  const action = status === "pending"
+  const action = d.status === "pending"
     ? `<button data-act="ok" data-id="${d.id}" class="btn btn-primary" style="padding:6px 10px; min-width:auto">OK</button>
        <button data-act="no" data-id="${d.id}" class="btn" style="padding:6px 10px; min-width:auto; background:#ef4444; color:#fff">X</button>`
     : `<button data-act="del" data-id="${d.id}" class="btn btn-ghost" style="padding:6px 10px; min-width:auto">Suppr.</button>`;
@@ -582,38 +474,18 @@ function formatDonationRow(d) {
   `;
 }
 
-let latestDonations = [];
-function pendingCount() {
-  return latestDonations.filter((x) => x.status === "pending").length;
-}
-
-function updateAdminBadge() {
-  const b = el("admin-badge");
-  const n = pendingCount();
-  if (!b) return;
-  if (n > 0) {
-    b.textContent = String(n);
-    b.style.display = "inline-block";
-  } else {
-    b.style.display = "none";
-  }
-}
-
 function renderReqTable() {
   const tb = document.querySelector("#req-table tbody");
   if (!tb) return;
   tb.innerHTML = "";
-
   latestDonations.forEach((r) => {
     const tr = document.createElement("tr");
     tr.innerHTML = formatDonationRow(r);
     tb.appendChild(tr);
   });
-
   tb.querySelectorAll("button[data-act]").forEach((b) => {
     b.onclick = () => setReqStatus(b.dataset.id, b.dataset.act);
   });
-
   updateAdminBadge();
 }
 
@@ -634,7 +506,6 @@ async function setReqStatus(donationId, act) {
     const snap = await tx.get(donationRef);
     if (!snap.exists()) return;
     const d = snap.data();
-
     if (d.status !== "pending") return;
 
     if (act === "ok") {
@@ -645,7 +516,6 @@ async function setReqStatus(donationId, act) {
       const sums = { ...(m.stats?.monthlySums || {}) };
       const key = ymKey();
       sums[key] = Number(sums[key] || 0) + Number(d.amount || 0);
-
       tx.set(mosqueRef, { stats: { monthlySums: sums } }, { merge: true });
     } else if (act === "no") {
       tx.update(donationRef, { status: "rejected" });
@@ -653,7 +523,7 @@ async function setReqStatus(donationId, act) {
   });
 }
 
-/* WhatsApp */
+/* ===== WhatsApp ===== */
 function openWhatsApp(to, msg) {
   window.open(`https://wa.me/${encodeURIComponent(to)}?text=${encodeURIComponent(msg)}`, "_blank");
 }
@@ -684,10 +554,10 @@ BarakAllahou fik.`);
   };
 
   el("btn-claimed").onclick = () => openDonModal();
-  el("don-confirm").onclick = () => { submitDonationRequest().catch((e) => alert(e?.message || "Erreur")); };
+  el("don-confirm").onclick = () => submitDonationRequest().catch((e) => alert(e?.message || "Erreur"));
 }
 
-/* Tasbih */
+/* ===== Tasbih ===== */
 function setupTasbih() {
   const k = "tasbih_count";
   const countEl = el("tasbih-count");
@@ -703,7 +573,7 @@ function setupTasbih() {
   reset.onclick = () => set(0);
 }
 
-/* Admin: selector + form */
+/* ===== Admin UI ===== */
 function populateCitySelect(select) {
   select.innerHTML = "";
   Object.keys(CITY_COORDS).forEach((c) => {
@@ -751,143 +621,47 @@ function fillAdminForm(id) {
   el("adm-ann").value = m.ann || "";
   el("adm-events").value = (m.events || []).map((e) => `${e.title} | ${e.date}`).join("\n");
   el("adm-goal").value = getMonthlyGoal(m);
-
   renderReqTable();
 }
 
-function mosqueToFirestorePayload(m) {
+function parseEventsTextarea() {
+  return el("adm-events").value
+    .split("\n")
+    .filter((l) => l.trim() !== "")
+    .map((l) => {
+      const [t, ...r] = l.split("|");
+      return { title: (t || "").trim(), date: (r.join("|") || "").trim() };
+    });
+}
+
+function mosqueToPayloadFromAdminForm() {
   return {
-    name: m.name || "Mosquée",
-    city: m.city || "Medina",
-    wave: m.wave || "",
-    orange: m.orange || "",
-    contact: m.contact || "",
-    phone: m.phone || "",
-    jumua: m.jumua || "13:30",
-    ann: m.ann || "",
-    events: Array.isArray(m.events) ? m.events : [],
-    method: (m.method != null) ? m.method : 3,
-    school: (m.school != null) ? m.school : 0,
-    offsets: Array.isArray(m.offsets) ? m.offsets : [0, 0, 0, 0, 0, 0],
-    goals: { monthly: Number(m.goals?.monthly ?? 500000) },
+    name: el("adm-name").value.trim() || "Mosquée",
+    city: el("adm-city").value,
+    wave: el("adm-wave").value.trim(),
+    orange: el("adm-orange").value.trim(),
+    contact: el("adm-contact").value.trim(),
+    phone: el("adm-phone").value.trim(),
+    jumua: el("adm-jumua").value || "13:30",
+    ann: el("adm-ann").value,
+    events: parseEventsTextarea(),
+    goals: { monthly: Math.max(0, parseInt(el("adm-goal").value, 10) || 0) },
   };
 }
 
-/* ====== Auth + User profile ====== */
-async function promptAdminLogin() {
-  const email = prompt("Email admin :");
-  if (!email) return null;
-  const password = prompt("Mot de passe :");
-  if (!password) return null;
-
-  const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-  return cred.user;
-}
-
-async function loadUserProfile(uid) {
-  const snap = await getDoc(usersDocRef(uid));
-  if (!snap.exists()) return null;
-  const data = snap.data();
-  const role = data.role;
-  const mosqueId = data.mosqueId || null;
-
-  if (role !== "admin" && role !== "super") return null;
-  if (role === "admin" && !mosqueId) return null;
-
-  return { uid, role, mosqueId };
-}
-
-async function handleAuthState(user) {
-  if (!user) {
-    currentUser = null;
-    SESSION_ROLE = "guest";
-    mosquesCache = [];
-    await attachMosque(resolveMosqueId());
-    return;
-  }
-
-  const profile = await loadUserProfile(user.uid);
-  if (!profile) {
-    await signOut(auth);
-    alert("Compte non autorisé (profil Firestore manquant).");
-    return;
-  }
-
-  currentUser = profile;
-  SESSION_ROLE = profile.role;
-
-  if (SESSION_ROLE === "super") {
-    await refreshMosquesCacheForSuper();
-  }
-
-  await maybeMigrateLocalStorageToFirestore();
-  await attachMosque(resolveMosqueId());
-}
-
-/* ====== Mosques list (super only) ====== */
 async function refreshMosquesCacheForSuper() {
   const snaps = await getDocs(collection(db, "mosques"));
   mosquesCache = snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-/* ====== Attach mosque (live listeners) ====== */
-async function attachMosque(mosqueId) {
-  if (unsubMosque) { unsubMosque(); unsubMosque = null; }
-  if (unsubDonations) { unsubDonations(); unsubDonations = null; }
-  latestDonations = [];
-
-  const ref = mosqueDocRef(mosqueId);
-  const snap = await getDoc(ref);
-
-  if (!snap.exists()) {
-    // fallback: seed local defaults (public get only)
-    activeMosque = DEFAULT_MOSQUES.find((m) => m.id === mosqueId) || DEFAULT_MOSQUES[0];
-    setCurrentMosqueId(activeMosque.id);
-    populateMosqueSelector();
-    refreshMosqueAccessUI();
-    fetchTimings();
-    return;
-  }
-
-  activeMosque = { id: snap.id, ...snap.data() };
-  setCurrentMosqueId(activeMosque.id);
-
-  unsubMosque = onSnapshot(ref, (s) => {
-    if (!s.exists()) return;
-    activeMosque = { id: s.id, ...s.data() };
-    populateMosqueSelector();
-    refreshMosqueAccessUI();
-    fetchTimings();
-    renderDonPublic();
-  });
-
-  // donations listener: only for logged-in users (admin/super)
-  if (SESSION_ROLE !== "guest") {
-    const q = query(donationsColRef(mosqueId), orderBy("createdAt", "desc"), limit(200));
-    unsubDonations = onSnapshot(q, (qs) => {
-      latestDonations = qs.docs.map((d) => ({ id: d.id, ...d.data() }));
-      renderReqTable();
-      updateAdminBadge();
-      renderDonPublic();
-    });
-  }
-
-  populateMosqueSelector();
-  refreshMosqueAccessUI();
-  fetchTimings();
-}
-
-/* Admin panel setup */
 function setupAdmin() {
   el("admin-button").onclick = async () => {
     try {
       if (!auth.currentUser) {
-        await promptAdminLogin();
-        // onAuthStateChanged fera le reste
-        return;
+        await promptLoginPhonePin();
+        return; // onAuthStateChanged s’occupe du reste
       }
 
-      // already logged in => open panel
       const isSuper = SESSION_ROLE === "super";
       el("super-row").style.display = isSuper ? "flex" : "none";
       el("role-hint").textContent = isSuper ? "Mode SUPER ADMIN" : "Mode ADMIN";
@@ -898,106 +672,42 @@ function setupAdmin() {
       fillAdminForm(activeMosque?.id || resolveMosqueId());
       openModal("modal-admin");
     } catch (e) {
-      alert(e?.message || "Erreur de connexion");
+      const msg = e?.message || String(e);
+      if (msg.includes("api-key-not-valid")) {
+        alert(
+          "Erreur API KEY Firebase.\n\n" +
+          "1) Vérifie que la clé apiKey dans app.js correspond à la Browser key du projet.\n" +
+          "2) Force le cache (index.html app.js?v=999).\n" +
+          "3) Authorized domains: itahandour.github.io.\n\n" +
+          "Console: window.__MM_FIREBASE_API_KEY"
+        );
+      } else {
+        alert(msg);
+      }
     }
-  };
-
-  el("add-mosque").onclick = async () => {
-    if (SESSION_ROLE !== "super") return;
-
-    const name = String(el("adm-new-name").value || "").trim();
-    if (!name) return alert("Nom requis");
-
-    const id = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 32) || `mosq-${Date.now()}`;
-
-    // create doc
-    await setDoc(mosqueDocRef(id), mosqueToFirestorePayload({
-      id,
-      name,
-      city: "Medina",
-      wave: "",
-      orange: "",
-      contact: "",
-      phone: "",
-      jumua: "13:30",
-      ann: "",
-      events: [],
-      method: 3,
-      school: 0,
-      offsets: [0, 0, 0, 0, 0, 0],
-      goals: { monthly: 500000 },
-    }), { merge: true });
-
-    el("adm-new-name").value = "";
-    await refreshMosquesCacheForSuper();
-    setCurrentMosqueId(id);
-    await attachMosque(id);
-
-    populateAdmMosqueSelect();
-    showStatus("Mosquée ajoutée.", "#16a34a");
-  };
-
-  el("del-mosque").onclick = async () => {
-    if (SESSION_ROLE !== "super") return;
-    if (!activeMosque) return;
-
-    if (!confirm(`Supprimer "${activeMosque.name}" ?`)) return;
-
-    await deleteDoc(mosqueDocRef(activeMosque.id));
-    await refreshMosquesCacheForSuper();
-
-    const next = mosquesCache[0]?.id || DEFAULT_MOSQUES[0].id;
-    setCurrentMosqueId(next);
-    await attachMosque(next);
-
-    populateAdmMosqueSelect();
-    showStatus("Mosquée supprimée.", "#ef4444");
   };
 
   el("save").onclick = async () => {
     if (!activeMosque) return;
     if (SESSION_ROLE === "guest") return;
 
-    const payload = {
-      name: el("adm-name").value.trim() || "Mosquée",
-      city: el("adm-city").value,
-      wave: el("adm-wave").value.trim(),
-      orange: el("adm-orange").value.trim(),
-      contact: el("adm-contact").value.trim(),
-      phone: el("adm-phone").value.trim(),
-      jumua: el("adm-jumua").value || "13:30",
-      ann: el("adm-ann").value,
-      events: el("adm-events").value
-        .split("\n")
-        .filter((l) => l.trim() !== "")
-        .map((l) => {
-          const [t, ...r] = l.split("|");
-          return { title: (t || "").trim(), date: (r.join("|") || "").trim() };
-        }),
-      goals: { monthly: Math.max(0, parseInt(el("adm-goal").value, 10) || 0) },
-    };
-
-    await setDoc(mosqueDocRef(activeMosque.id), payload, { merge: true });
-
+    await setDoc(mosqueDocRef(activeMosque.id), mosqueToPayloadFromAdminForm(), { merge: true });
     closeAll();
     showStatus("Enregistré.");
   };
 }
 
-/* Footer */
+/* ===== Footer ===== */
 function setupFooter() {
   el("events-btn").onclick = () => { renderEvents(); openModal("modal-events"); };
-
   el("announce-btn").onclick = () => {
     openModal("modal-ann");
     if (!activeMosque) return;
     localStorage.setItem(`annSeen_${activeMosque.id}_${todayKey()}`, "1");
     el("notif").style.display = "none";
   };
-
   el("about-btn").onclick = () => openModal("modal-about");
   el("names-btn").onclick = () => { renderNames99(); openModal("modal-names"); };
-
   el("share-btn").onclick = () => {
     if (!activeMosque) return;
     const text = `🕌 ${activeMosque.name}\n${el("gregorian-date").textContent}\n\nFajr: ${el("fajr-time").textContent}\nDhuhr: ${el("dhuhr-time").textContent}\nAsr: ${el("asr-time").textContent}\nMaghrib: ${el("maghrib-time").textContent}\nIsha: ${el("isha-time").textContent}\n\n${location.href}`;
@@ -1005,7 +715,72 @@ function setupFooter() {
   };
 }
 
-/* Display */
+/* ===== Events / Ramadan ===== */
+function renderEvents() {
+  const box = el("events-list");
+  const events = Array.isArray(activeMosque?.events) ? activeMosque.events : [];
+  if (!events.length) { box.textContent = "—"; return; }
+
+  const wrap = document.createElement("div");
+  wrap.style.display = "grid";
+  wrap.style.gap = "8px";
+
+  events.forEach((ev) => {
+    const item = document.createElement("div");
+    item.style.border = "1px solid rgba(238,242,247,.9)";
+    item.style.borderRadius = "12px";
+    item.style.padding = "10px 12px";
+    item.innerHTML = `<div style="font-weight:900;color:#1f5e53">${escapeHtml(ev.title || "")}</div>
+                      <div class="small">${escapeHtml(ev.date || "")}</div>`;
+    wrap.appendChild(item);
+  });
+
+  box.innerHTML = "";
+  box.appendChild(wrap);
+}
+
+function formatFastingDurationShort(fajr, maghrib) {
+  if (!fajr || !maghrib) return "—";
+  const f = parseHM(fajr);
+  const m = parseHM(maghrib);
+  const start = f.h * 60 + f.m;
+  const end = m.h * 60 + m.m;
+  let dur = end - start;
+  if (dur < 0) dur += 24 * 60;
+  const hh = Math.floor(dur / 60);
+  const mm = dur % 60;
+  return `${hh}h ${String(mm).padStart(2, "0")}m`;
+}
+
+function renderRamadan() {
+  const card = el("ramadan-card");
+  if (!card) return;
+
+  const start = new Date(`${RAMADAN_START_DATE}T00:00:00`);
+  const now = new Date();
+  const msDay = 24 * 60 * 60 * 1000;
+  const dayIndex = Math.floor((now - start) / msDay) + 1;
+
+  if (dayIndex < 1 || dayIndex > RAMADAN_TOTAL_DAYS) {
+    card.style.display = "none";
+    return;
+  }
+
+  const left = RAMADAN_TOTAL_DAYS - dayIndex;
+  el("ramadan-sub").textContent = `${dayIndex} Ramadan • ${WEEKDAYS[now.getDay()]} ${now.getDate()} ${MONTHS[now.getMonth()]}`;
+  el("ramadan-day").textContent = `Jour ${dayIndex}/${RAMADAN_TOTAL_DAYS}`;
+  el("ramadan-left").textContent = left === 0 ? "Dernier jour" : `${left} j restants`;
+
+  const iftar = (timingsData && timingsData.Maghrib) ? timingsData.Maghrib : "--:--";
+  const suhoor = (timingsData && timingsData.Fajr) ? timingsData.Fajr : "--:--";
+  el("ramadan-iftar").textContent = iftar;
+  el("ramadan-suhoor").textContent = suhoor;
+  el("ramadan-duration").textContent = `Durée du jeûne: ${formatFastingDurationShort(suhoor, iftar)}`;
+
+  card.style.display = "block";
+}
+
+/* ===== Display ===== */
 function displayAll(data) {
   timingsData = (data && data.timings) ? data.timings : MOCK;
   const m = activeMosque || DEFAULT_MOSQUES[0];
@@ -1040,14 +815,14 @@ function displayAll(data) {
   updatePublicCategoryHelp();
   updateNextCountdown();
   renderDonPublic();
-  updateAdminBadge();
   renderReqTable();
   renderEvents();
   renderRamadan();
   refreshMosqueAccessUI();
+  populateMosqueSelector();
 }
 
-/* 99 Noms */
+/* ===== 99 names ===== */
 const NAMES_99 = [
   { ar:"ٱللَّٰه", fr:"Allah" },
   { ar:"ٱلرَّحْمَٰن", fr:"Ar-Rahman (Le Tout Miséricordieux)" },
@@ -1157,7 +932,6 @@ function renderNames99() {
   if (!list || !header) return;
   header.textContent = "Les 99 Noms d'Allah";
   list.innerHTML = "";
-
   NAMES_99.forEach((n, idx) => {
     const li = document.createElement("li");
     li.innerHTML = `<span><strong>${idx + 1}.</strong> ${escapeHtml(n.fr)}</span><span style="font-weight:900">${escapeHtml(n.ar)}</span>`;
@@ -1165,7 +939,7 @@ function renderNames99() {
   });
 }
 
-/* ====== Migration localStorage -> Firestore (1x) ====== */
+/* ===== Migration localStorage -> Firestore (1x) ===== */
 function loadLocalMosques() {
   let arr = JSON.parse(localStorage.getItem("mosques") || "null");
   if (!arr || !arr.length) {
@@ -1174,7 +948,6 @@ function loadLocalMosques() {
   }
   return arr;
 }
-
 function loadLocalDonationReq(mosqueId) {
   return JSON.parse(localStorage.getItem(`donreq_${mosqueId}`) || "[]");
 }
@@ -1182,44 +955,121 @@ function loadLocalDonationReq(mosqueId) {
 async function maybeMigrateLocalStorageToFirestore() {
   if (localStorage.getItem(LOCAL_MIGRATION_KEY)) return;
 
-  // only super migrates all mosques; admin migrates only their mosque doc
   const localMosques = loadLocalMosques();
 
-  if (currentUser?.role === "super") {
-    for (const m of localMosques) {
-      const ref = mosqueDocRef(m.id);
-      const existing = await getDoc(ref);
-      if (!existing.exists()) {
-        await setDoc(ref, mosqueToFirestorePayload({ ...m, goals: { monthly: Number(localStorage.getItem(`dong_${m.id}`) || 500000) } }), { merge: true });
-      }
-      // migrate pending list
-      const localReq = loadLocalDonationReq(m.id).slice(0, 200);
-      for (const r of localReq) {
-        await addDoc(donationsColRef(m.id), {
-          amount: Number(r.amount || 0),
-          category: normalizeCategory(r.category),
-          ref: String(r.ref || ""),
-          status: r.status === "ok" ? "confirmed" : (r.status === "no" ? "rejected" : "pending"),
-          createdAt: serverTimestamp(),
-          mosqueId: m.id,
-        });
-      }
+  // super: migre tout; admin: migre sa mosquée uniquement
+  const allowedMosques = currentUser?.role === "super"
+    ? localMosques
+    : localMosques.filter((m) => m.id === currentUser?.mosqueId);
+
+  for (const m of allowedMosques) {
+    const ref = mosqueDocRef(m.id);
+    const exists = await getDoc(ref);
+    if (!exists.exists()) {
+      await setDoc(ref, {
+        name: m.name || "Mosquée",
+        city: m.city || "Medina",
+        wave: m.wave || "",
+        orange: m.orange || "",
+        contact: m.contact || "",
+        phone: m.phone || "",
+        jumua: m.jumua || "13:30",
+        ann: m.ann || "",
+        events: Array.isArray(m.events) ? m.events : [],
+        method: (m.method != null) ? m.method : 3,
+        school: (m.school != null) ? m.school : 0,
+        offsets: Array.isArray(m.offsets) ? m.offsets : [0, 0, 0, 0, 0, 0],
+        goals: { monthly: Number(localStorage.getItem(`dong_${m.id}`) || 500000) },
+      }, { merge: true });
     }
-  } else if (currentUser?.role === "admin") {
-    const only = localMosques.find((m) => m.id === currentUser.mosqueId);
-    if (only) {
-      const ref = mosqueDocRef(only.id);
-      const existing = await getDoc(ref);
-      if (!existing.exists()) {
-        await setDoc(ref, mosqueToFirestorePayload({ ...only, goals: { monthly: Number(localStorage.getItem(`dong_${only.id}`) || 500000) } }), { merge: true });
-      }
+
+    const localReq = loadLocalDonationReq(m.id).slice(0, 200);
+    for (const r of localReq) {
+      await addDoc(donationsColRef(m.id), {
+        amount: Number(r.amount || 0),
+        category: normalizeCategory(r.category),
+        ref: String(r.ref || ""),
+        status: r.status === "ok" ? "confirmed" : (r.status === "no" ? "rejected" : "pending"),
+        createdAt: serverTimestamp(),
+        mosqueId: m.id,
+      });
     }
   }
 
   localStorage.setItem(LOCAL_MIGRATION_KEY, "1");
 }
 
-/* Init */
+/* ===== Attach mosque (listeners) ===== */
+async function attachMosque(mosqueId) {
+  if (unsubMosque) { unsubMosque(); unsubMosque = null; }
+  if (unsubDonations) { unsubDonations(); unsubDonations = null; }
+  latestDonations = [];
+
+  const ref = mosqueDocRef(mosqueId);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) {
+    activeMosque = DEFAULT_MOSQUES.find((m) => m.id === mosqueId) || DEFAULT_MOSQUES[0];
+    setCurrentMosqueId(activeMosque.id);
+    refreshMosqueAccessUI();
+    populateMosqueSelector();
+    fetchTimings();
+    return;
+  }
+
+  activeMosque = { id: snap.id, ...snap.data() };
+  setCurrentMosqueId(activeMosque.id);
+
+  unsubMosque = onSnapshot(ref, (s) => {
+    if (!s.exists()) return;
+    activeMosque = { id: s.id, ...s.data() };
+    refreshMosqueAccessUI();
+    populateMosqueSelector();
+    fetchTimings();
+    renderDonPublic();
+  });
+
+  if (SESSION_ROLE !== "guest") {
+    const q = query(donationsColRef(mosqueId), orderBy("createdAt", "desc"), limit(200));
+    unsubDonations = onSnapshot(q, (qs) => {
+      latestDonations = qs.docs.map((d) => ({ id: d.id, ...d.data() }));
+      renderReqTable();
+      updateAdminBadge();
+      renderDonPublic();
+    });
+  }
+
+  refreshMosqueAccessUI();
+  populateMosqueSelector();
+  fetchTimings();
+}
+
+/* ===== Auth state ===== */
+async function handleAuthState(user) {
+  if (!user) {
+    currentUser = null;
+    SESSION_ROLE = "guest";
+    mosquesCache = [];
+    await attachMosque(resolveMosqueId());
+    return;
+  }
+
+  const profile = await loadUserProfile(user.uid);
+  if (!profile) {
+    await signOut(auth);
+    alert("Compte non autorisé (doc users/{uid} manquant ou invalide).");
+    return;
+  }
+
+  currentUser = profile;
+  SESSION_ROLE = profile.role;
+
+  if (SESSION_ROLE === "super") await refreshMosquesCacheForSuper();
+  await maybeMigrateLocalStorageToFirestore();
+  await attachMosque(resolveMosqueId());
+}
+
+/* ===== Init ===== */
 function setup() {
   bindModals();
   initTheme();
@@ -1231,7 +1081,6 @@ function setup() {
 
   updateClock();
   setInterval(updateClock, 1000);
-
   setInterval(updateNextCountdown, 1000);
 
   updatePublicCategoryHelp();
@@ -1241,11 +1090,6 @@ function setup() {
 
 document.addEventListener("DOMContentLoaded", () => {
   setup();
-
-  onAuthStateChanged(auth, (user) => {
-    handleAuthState(user).catch((e) => console.error(e));
-  });
-
-  // default guest path
-  attachMosque(resolveMosqueId()).catch((e) => console.error(e));
+  onAuthStateChanged(auth, (user) => { handleAuthState(user).catch(console.error); });
+  attachMosque(resolveMosqueId()).catch(console.error);
 });
