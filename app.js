@@ -205,7 +205,6 @@ function bindModals() {
     if (e.target && e.target.classList && e.target.classList.contains('modal')) closeAll();
   });
 
-  // popup ok
   const ok = el('popup-ok');
   if (ok) ok.onclick = () => closeAll();
 }
