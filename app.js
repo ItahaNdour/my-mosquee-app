@@ -976,3 +976,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
   attachMosque(resolveMosqueId()).catch(console.error);
 });
+
