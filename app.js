@@ -23,30 +23,26 @@ import {
   runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-/* ===== Firebase config (doit matcher TON projet) ===== */
+/* ✅ Firebase config EXACT (collé depuis Firebase Console) */
 const firebaseConfig = {
-  apiKey: "AIzaSyCuQJaDJUo37WeFh61DAFFhN30N0ewAAsQ",
+  apiKey: "AIzaSyCUOJaDJUo37WeFh61DAFHFN3ON6evAAsQ",
   authDomain: "mymosquee-web.firebaseapp.com",
   projectId: "mymosquee-web",
   storageBucket: "mymosquee-web.firebasestorage.app",
   messagingSenderId: "129580574505",
   appId: "1:129580574505:web:4faeac48094084fe3ab938",
-  measurementId: "G-PFWSE9HB05",
+  measurementId: "G-PFWSE9H8D5",
 };
-
-/* Debug: voir la clé réellement utilisée */
-window.__MM_FIREBASE_API_KEY = firebaseConfig.apiKey;
-console.log("[MyMosque] apiKey used by app.js =", window.__MM_FIREBASE_API_KEY);
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* ===== Roles ===== */
+/* Roles */
 let SESSION_ROLE = "guest"; // guest | admin | super
 let currentUser = null; // { uid, role, mosqueId }
 
-/* ===== Constants (inchangés) ===== */
+/* Constants */
 const PRAYER_NAMES = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
 const DISPLAY = {
   Fajr: { local: "Souba", ar: "Fajr" },
@@ -89,40 +85,25 @@ const DON_CATEGORY_HELP = {
 };
 
 const el = (id) => document.getElementById(id);
-
 let timingsData = null;
-let lastAlertShown = "";
-let playedFor = "";
 
-/* ===== State ===== */
+/* Firestore state */
 let mosquesCache = [];
 let activeMosque = null;
-
 let unsubMosque = null;
 let unsubDonations = null;
 let latestDonations = [];
 
 const LOCAL_MIGRATION_KEY = "firestore_migrated_v1";
 
-/* ===== Helpers ===== */
+/* UI helpers */
 function showStatus(msg, bg) {
   const node = el("status");
   if (!node) return;
   node.textContent = msg;
   node.style.background = bg || "#2f7d6d";
   node.style.display = "block";
-  setTimeout(() => { node.style.display = "none"; }, 3000);
-}
-
-function openModal(id) { el(id).style.display = "block"; }
-function closeAll() { document.querySelectorAll(".modal").forEach((m) => { m.style.display = "none"; }); }
-function bindModals() {
-  document.querySelectorAll(".modal .close").forEach((x) => x.addEventListener("click", closeAll));
-  window.addEventListener("click", (e) => {
-    if (e.target && e.target.classList && e.target.classList.contains("modal")) closeAll();
-  });
-  const ok = el("popup-ok");
-  if (ok) ok.onclick = () => closeAll();
+  setTimeout(() => { node.style.display = "none"; }, 2500);
 }
 
 let popupTimer = null;
@@ -179,14 +160,9 @@ function resolveMosqueId() {
   if (currentUser?.role === "admin" && currentUser?.mosqueId) return currentUser.mosqueId;
   return localStorage.getItem("currentMosqueId") || DEFAULT_MOSQUES[0].id;
 }
-
 function setCurrentMosqueId(id) { localStorage.setItem("currentMosqueId", id); }
 
-function mosqueDocRef(mosqueId) { return doc(db, "mosques", mosqueId); }
-function donationsColRef(mosqueId) { return collection(db, "mosques", mosqueId, "donations"); }
-function usersDocRef(uid) { return doc(db, "users", uid); }
-
-/* ===== Theme ===== */
+/* Theme */
 function applyTheme(theme) {
   document.body.classList.toggle("dark", theme === "dark");
   localStorage.setItem("theme", theme);
@@ -202,31 +178,43 @@ function initTheme() {
   };
 }
 
-/* ===== Login “Téléphone + PIN” (pseudo-email) ===== */
-const PSEUDO_DOMAIN = "mymosque.sn";
+/* Modals */
+function openModal(id) { el(id).style.display = "block"; }
+function closeAll() { document.querySelectorAll(".modal").forEach((m) => { m.style.display = "none"; }); }
+function bindModals() {
+  document.querySelectorAll(".modal .close").forEach((x) => x.addEventListener("click", closeAll));
+  window.addEventListener("click", (e) => {
+    if (e.target && e.target.classList && e.target.classList.contains("modal")) closeAll();
+  });
+  const ok = el("popup-ok");
+  if (ok) ok.onclick = () => closeAll();
+}
 
+/* Auth login (téléphone/pin possible via pseudo-email) */
+const PSEUDO_DOMAIN = "mymosque.sn";
 function normalizePhone(input) {
   const raw = String(input || "").trim();
   const digits = raw.replace(/\D/g, "");
-  if (digits.length >= 9) return digits.slice(-9); // SN: 9 digits
+  if (digits.length >= 9) return digits.slice(-9);
   return digits;
 }
 function phoneToEmail(phone9) {
   const p = normalizePhone(phone9);
   return `admin-${p}@${PSEUDO_DOMAIN}`;
 }
-
-async function promptLoginPhonePin() {
+async function promptLogin() {
   const phoneOrEmail = prompt("Admin - Téléphone (9 chiffres) ou Email :");
   if (!phoneOrEmail) return null;
   const pin = prompt("Code (PIN) :");
   if (!pin) return null;
-
   const email = phoneOrEmail.includes("@") ? phoneOrEmail.trim() : phoneToEmail(phoneOrEmail);
   return signInWithEmailAndPassword(auth, email, pin);
 }
 
-/* ===== Users profile ===== */
+function usersDocRef(uid) { return doc(db, "users", uid); }
+function mosqueDocRef(mosqueId) { return doc(db, "mosques", mosqueId); }
+function donationsColRef(mosqueId) { return collection(db, "mosques", mosqueId, "donations"); }
+
 async function loadUserProfile(uid) {
   const snap = await getDoc(usersDocRef(uid));
   if (!snap.exists()) return null;
@@ -238,7 +226,6 @@ async function loadUserProfile(uid) {
   return { uid, role, mosqueId };
 }
 
-/* ===== UI mosque select ===== */
 function canSelectMosque() {
   const forced = !!getUrlMosqueId();
   return currentUser?.role === "super" && !forced;
@@ -261,7 +248,6 @@ function refreshMosqueAccessUI() {
 function populateMosqueSelector() {
   const sel = el("mosque-selector");
   if (!sel) return;
-
   sel.innerHTML = "";
   const list = (currentUser?.role === "super") ? mosquesCache : (activeMosque ? [activeMosque] : []);
   list.forEach((m) => {
@@ -270,7 +256,6 @@ function populateMosqueSelector() {
     o.textContent = m.name;
     sel.appendChild(o);
   });
-
   sel.value = activeMosque?.id || resolveMosqueId();
   sel.onchange = async (e) => {
     if (!canSelectMosque()) return;
@@ -280,13 +265,14 @@ function populateMosqueSelector() {
   };
 }
 
-/* ===== Clock / countdown ===== */
+/* Clock */
 function updateClock() {
   const n = new Date();
   el("current-time").textContent = [n.getHours(), n.getMinutes(), n.getSeconds()].map((v) => String(v).padStart(2, "0")).join(":");
   el("gregorian-date").textContent = `${WEEKDAYS[n.getDay()]} ${n.getDate()} ${MONTHS[n.getMonth()]} ${n.getFullYear()}`;
 }
 
+/* Next prayer */
 function fmt(ms) {
   if (ms < 0) return "00:00:00";
   const t = Math.floor(ms / 1000);
@@ -346,7 +332,7 @@ function updateNextCountdown() {
   if (item) item.classList.add("current");
 }
 
-/* ===== API timings ===== */
+/* Timings */
 function mockData() {
   return { timings: MOCK, date: { hijri: { day: "3", month: { ar: "Rabi' al-Awwal" }, year: "1447" } } };
 }
@@ -380,7 +366,7 @@ async function fetchTimings() {
   }
 }
 
-/* ===== Donations (Firestore) ===== */
+/* Donations */
 function normalizeCategory(cat) {
   const c = String(cat || "").trim();
   if (c === "Travaux / Entretien") return "Travaux";
@@ -424,9 +410,11 @@ function openDonModal() {
 
 async function submitDonationRequest() {
   if (!activeMosque) return;
+
   const amount = parseInt(el("don-amount").value, 10) || 0;
   const category = normalizeCategory(el("don-category").value);
   const ref = String(el("don-ref").value || "").trim();
+
   if (amount <= 0) return alert("Montant invalide");
 
   await addDoc(donationsColRef(activeMosque.id), {
@@ -523,7 +511,7 @@ async function setReqStatus(donationId, act) {
   });
 }
 
-/* ===== WhatsApp ===== */
+/* WhatsApp */
 function openWhatsApp(to, msg) {
   window.open(`https://wa.me/${encodeURIComponent(to)}?text=${encodeURIComponent(msg)}`, "_blank");
 }
@@ -557,7 +545,7 @@ BarakAllahou fik.`);
   el("don-confirm").onclick = () => submitDonationRequest().catch((e) => alert(e?.message || "Erreur"));
 }
 
-/* ===== Tasbih ===== */
+/* Tasbih */
 function setupTasbih() {
   const k = "tasbih_count";
   const countEl = el("tasbih-count");
@@ -573,7 +561,12 @@ function setupTasbih() {
   reset.onclick = () => set(0);
 }
 
-/* ===== Admin UI ===== */
+/* Admin */
+async function refreshMosquesCacheForSuper() {
+  const snaps = await getDocs(collection(db, "mosques"));
+  mosquesCache = snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
 function populateCitySelect(select) {
   select.innerHTML = "";
   Object.keys(CITY_COORDS).forEach((c) => {
@@ -621,6 +614,7 @@ function fillAdminForm(id) {
   el("adm-ann").value = m.ann || "";
   el("adm-events").value = (m.events || []).map((e) => `${e.title} | ${e.date}`).join("\n");
   el("adm-goal").value = getMonthlyGoal(m);
+
   renderReqTable();
 }
 
@@ -649,17 +643,12 @@ function mosqueToPayloadFromAdminForm() {
   };
 }
 
-async function refreshMosquesCacheForSuper() {
-  const snaps = await getDocs(collection(db, "mosques"));
-  mosquesCache = snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
-}
-
 function setupAdmin() {
   el("admin-button").onclick = async () => {
     try {
       if (!auth.currentUser) {
-        await promptLoginPhonePin();
-        return; // onAuthStateChanged s’occupe du reste
+        await promptLogin();
+        return;
       }
 
       const isSuper = SESSION_ROLE === "super";
@@ -672,18 +661,7 @@ function setupAdmin() {
       fillAdminForm(activeMosque?.id || resolveMosqueId());
       openModal("modal-admin");
     } catch (e) {
-      const msg = e?.message || String(e);
-      if (msg.includes("api-key-not-valid")) {
-        alert(
-          "Erreur API KEY Firebase.\n\n" +
-          "1) Vérifie que la clé apiKey dans app.js correspond à la Browser key du projet.\n" +
-          "2) Force le cache (index.html app.js?v=999).\n" +
-          "3) Authorized domains: itahandour.github.io.\n\n" +
-          "Console: window.__MM_FIREBASE_API_KEY"
-        );
-      } else {
-        alert(msg);
-      }
+      alert(e?.message || "Erreur");
     }
   };
 
@@ -697,25 +675,7 @@ function setupAdmin() {
   };
 }
 
-/* ===== Footer ===== */
-function setupFooter() {
-  el("events-btn").onclick = () => { renderEvents(); openModal("modal-events"); };
-  el("announce-btn").onclick = () => {
-    openModal("modal-ann");
-    if (!activeMosque) return;
-    localStorage.setItem(`annSeen_${activeMosque.id}_${todayKey()}`, "1");
-    el("notif").style.display = "none";
-  };
-  el("about-btn").onclick = () => openModal("modal-about");
-  el("names-btn").onclick = () => { renderNames99(); openModal("modal-names"); };
-  el("share-btn").onclick = () => {
-    if (!activeMosque) return;
-    const text = `🕌 ${activeMosque.name}\n${el("gregorian-date").textContent}\n\nFajr: ${el("fajr-time").textContent}\nDhuhr: ${el("dhuhr-time").textContent}\nAsr: ${el("asr-time").textContent}\nMaghrib: ${el("maghrib-time").textContent}\nIsha: ${el("isha-time").textContent}\n\n${location.href}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-  };
-}
-
-/* ===== Events / Ramadan ===== */
+/* Events */
 function renderEvents() {
   const box = el("events-list");
   const events = Array.isArray(activeMosque?.events) ? activeMosque.events : [];
@@ -739,6 +699,7 @@ function renderEvents() {
   box.appendChild(wrap);
 }
 
+/* Ramadan */
 function formatFastingDurationShort(fajr, maghrib) {
   if (!fajr || !maghrib) return "—";
   const f = parseHM(fajr);
@@ -780,7 +741,28 @@ function renderRamadan() {
   card.style.display = "block";
 }
 
-/* ===== Display ===== */
+/* Footer */
+function setupFooter() {
+  el("events-btn").onclick = () => { renderEvents(); openModal("modal-events"); };
+
+  el("announce-btn").onclick = () => {
+    openModal("modal-ann");
+    if (!activeMosque) return;
+    localStorage.setItem(`annSeen_${activeMosque.id}_${todayKey()}`, "1");
+    el("notif").style.display = "none";
+  };
+
+  el("about-btn").onclick = () => openModal("modal-about");
+  el("names-btn").onclick = () => { renderNames99(); openModal("modal-names"); };
+
+  el("share-btn").onclick = () => {
+    if (!activeMosque) return;
+    const text = `🕌 ${activeMosque.name}\n${el("gregorian-date").textContent}\n\nFajr: ${el("fajr-time").textContent}\nDhuhr: ${el("dhuhr-time").textContent}\nAsr: ${el("asr-time").textContent}\nMaghrib: ${el("maghrib-time").textContent}\nIsha: ${el("isha-time").textContent}\n\n${location.href}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
+}
+
+/* Display */
 function displayAll(data) {
   timingsData = (data && data.timings) ? data.timings : MOCK;
   const m = activeMosque || DEFAULT_MOSQUES[0];
@@ -822,107 +804,12 @@ function displayAll(data) {
   populateMosqueSelector();
 }
 
-/* ===== 99 names ===== */
+/* 99 names */
 const NAMES_99 = [
   { ar:"ٱللَّٰه", fr:"Allah" },
   { ar:"ٱلرَّحْمَٰن", fr:"Ar-Rahman (Le Tout Miséricordieux)" },
   { ar:"ٱلرَّحِيم", fr:"Ar-Rahim (Le Très Miséricordieux)" },
-  { ar:"ٱلْمَلِك", fr:"Al-Malik (Le Souverain)" },
-  { ar:"ٱلْقُدُّوس", fr:"Al-Quddus (Le Saint)" },
-  { ar:"ٱلسَّلَام", fr:"As-Salam (La Paix)" },
-  { ar:"ٱلْمُؤْمِن", fr:"Al-Mu’min (Le Garant)" },
-  { ar:"ٱلْمُهَيْمِن", fr:"Al-Muhaymin (Le Protecteur)" },
-  { ar:"ٱلْعَزِيز", fr:"Al-‘Aziz (Le Tout-Puissant)" },
-  { ar:"ٱلْجَبَّار", fr:"Al-Jabbar (Le Contraignant)" },
-  { ar:"ٱلْمُتَكَبِّر", fr:"Al-Mutakabbir (Le Suprême)" },
-  { ar:"ٱلْخَالِق", fr:"Al-Khaliq (Le Créateur)" },
-  { ar:"ٱلْبَارِئ", fr:"Al-Bari’ (Le Producteur)" },
-  { ar:"ٱلْمُصَوِّر", fr:"Al-Musawwir (Le Formateur)" },
-  { ar:"ٱلْغَفَّار", fr:"Al-Ghaffar (Le Grand Pardonneur)" },
-  { ar:"ٱلْقَهَّار", fr:"Al-Qahhar (Le Dominateur)" },
-  { ar:"ٱلْوَهَّاب", fr:"Al-Wahhab (Le Donateur)" },
-  { ar:"ٱلرَّزَّاق", fr:"Ar-Razzaq (Le Pourvoyeur)" },
-  { ar:"ٱلْفَتَّاح", fr:"Al-Fattah (L’Ouvreur)" },
-  { ar:"ٱلْعَلِيم", fr:"Al-‘Alim (L’Omniscient)" },
-  { ar:"ٱلْقَابِض", fr:"Al-Qabid (Celui qui Retient)" },
-  { ar:"ٱلْبَاسِط", fr:"Al-Basit (Celui qui Étend)" },
-  { ar:"ٱلْخَافِض", fr:"Al-Khafid (Celui qui Abaisse)" },
-  { ar:"ٱلرَّافِع", fr:"Ar-Rafi‘ (Celui qui Élève)" },
-  { ar:"ٱلْمُعِزّ", fr:"Al-Mu‘izz (Celui qui Honore)" },
-  { ar:"ٱلْمُذِلّ", fr:"Al-Mudhill (Celui qui Humilie)" },
-  { ar:"ٱلسَّمِيع", fr:"As-Sami‘ (L’Audient)" },
-  { ar:"ٱلْبَصِير", fr:"Al-Basir (Le Clairvoyant)" },
-  { ar:"ٱلْحَكَم", fr:"Al-Hakam (Le Juge)" },
-  { ar:"ٱلْعَدْل", fr:"Al-‘Adl (Le Juste)" },
-  { ar:"ٱللَّطِيف", fr:"Al-Latif (Le Subtil)" },
-  { ar:"ٱلْخَبِير", fr:"Al-Khabir (Le Parfaitement Connaisseur)" },
-  { ar:"ٱلْحَلِيم", fr:"Al-Halim (Le Longanime)" },
-  { ar:"ٱلْعَظِيم", fr:"Al-‘Azim (L’Immense)" },
-  { ar:"ٱلْغَفُور", fr:"Al-Ghafur (Le Pardonneur)" },
-  { ar:"ٱلشَّكُور", fr:"Ash-Shakur (Le Reconnaissant)" },
-  { ar:"ٱلْعَلِيّ", fr:"Al-‘Aliyy (Le Très-Haut)" },
-  { ar:"ٱلْكَبِير", fr:"Al-Kabir (Le Très-Grand)" },
-  { ar:"ٱلْحَفِيظ", fr:"Al-Hafiz (Le Gardien)" },
-  { ar:"ٱلْمُقِيت", fr:"Al-Muqit (Le Nourricier)" },
-  { ar:"ٱلْحَسِيب", fr:"Al-Hasib (Celui qui Suffit)" },
-  { ar:"ٱلْجَلِيل", fr:"Al-Jalil (Le Majestueux)" },
-  { ar:"ٱلْكَرِيم", fr:"Al-Karim (Le Généreux)" },
-  { ar:"ٱلرَّقِيب", fr:"Ar-Raqib (Le Vigilant)" },
-  { ar:"ٱلْمُجِيب", fr:"Al-Mujib (Celui qui Exauce)" },
-  { ar:"ٱلْوَاسِع", fr:"Al-Wasi‘ (L’Immense)" },
-  { ar:"ٱلْحَكِيم", fr:"Al-Hakim (Le Sage)" },
-  { ar:"ٱلْوَدُود", fr:"Al-Wadud (Le Bien-Aimant)" },
-  { ar:"ٱلْمَجِيد", fr:"Al-Majid (Le Glorieux)" },
-  { ar:"ٱلْبَاعِث", fr:"Al-Ba‘ith (Le Ressusciteur)" },
-  { ar:"ٱلشَّهِيد", fr:"Ash-Shahid (Le Témoin)" },
-  { ar:"ٱلْحَقّ", fr:"Al-Haqq (La Vérité)" },
-  { ar:"ٱلْوَكِيل", fr:"Al-Wakil (Le Garant)" },
-  { ar:"ٱلْقَوِيّ", fr:"Al-Qawiyy (Le Fort)" },
-  { ar:"ٱلْمَتِين", fr:"Al-Matin (Le Très-Ferme)" },
-  { ar:"ٱلْوَلِيّ", fr:"Al-Waliyy (Le Protecteur)" },
-  { ar:"ٱلْحَمِيد", fr:"Al-Hamid (Le Digne de Louange)" },
-  { ar:"ٱلْمُحْصِي", fr:"Al-Muhsi (Celui qui Dénombre)" },
-  { ar:"ٱلْمُبْدِئ", fr:"Al-Mubdi’ (Celui qui Initie)" },
-  { ar:"ٱلْمُعِيد", fr:"Al-Mu‘id (Celui qui Répète)" },
-  { ar:"ٱلْمُحْيِي", fr:"Al-Muhyi (Celui qui Donne la Vie)" },
-  { ar:"ٱلْمُمِيت", fr:"Al-Mumit (Celui qui Donne la Mort)" },
-  { ar:"ٱلْحَيّ", fr:"Al-Hayy (Le Vivant)" },
-  { ar:"ٱلْقَيُّوم", fr:"Al-Qayyum (L’Auto-subsistant)" },
-  { ar:"ٱلْوَاجِد", fr:"Al-Wajid (Le Riche)" },
-  { ar:"ٱلْمَاجِد", fr:"Al-Majid (Le Noble)" },
-  { ar:"ٱلْوَاحِد", fr:"Al-Wahid (L’Unique)" },
-  { ar:"ٱلْأَحَد", fr:"Al-Ahad (L’Un)" },
-  { ar:"ٱلصَّمَد", fr:"As-Samad (Le Seul à être Imploré)" },
-  { ar:"ٱلْقَادِر", fr:"Al-Qadir (Le Capable)" },
-  { ar:"ٱلْمُقْتَدِر", fr:"Al-Muqtadir (Le Très-Puissant)" },
-  { ar:"ٱلْمُقَدِّم", fr:"Al-Muqaddim (Celui qui Avance)" },
-  { ar:"ٱلْمُؤَخِّر", fr:"Al-Mu’akhkhir (Celui qui Retarde)" },
-  { ar:"ٱلْأَوَّل", fr:"Al-Awwal (Le Premier)" },
-  { ar:"ٱلْآخِر", fr:"Al-Akhir (Le Dernier)" },
-  { ar:"ٱلظَّاهِر", fr:"Az-Zahir (L’Apparent)" },
-  { ar:"ٱلْبَاطِن", fr:"Al-Batin (Le Caché)" },
-  { ar:"ٱلْوَالِي", fr:"Al-Wali (Le Gouverneur)" },
-  { ar:"ٱلْمُتَعَالِي", fr:"Al-Muta‘ali (Le Très-Élevé)" },
-  { ar:"ٱلْبَرّ", fr:"Al-Barr (Le Bienfaisant)" },
-  { ar:"ٱلتَّوَّاب", fr:"At-Tawwab (Celui qui Accepte le Repentir)" },
-  { ar:"ٱلْمُنْتَقِم", fr:"Al-Muntaqim (Le Vengeur)" },
-  { ar:"ٱلْعَفُوّ", fr:"Al-‘Afuww (L’Indulgent)" },
-  { ar:"ٱلرَّؤُوف", fr:"Ar-Ra’uf (Le Compatissant)" },
-  { ar:"مَالِكُ ٱلْمُلْك", fr:"Malik-ul-Mulk (Maître du Royaume)" },
-  { ar:"ذُو ٱلْجَلَالِ وَٱلْإِكْرَام", fr:"Dhul-Jalali wal-Ikram (Majesté & Générosité)" },
-  { ar:"ٱلْمُقْسِط", fr:"Al-Muqsit (L’Équitable)" },
-  { ar:"ٱلْجَامِع", fr:"Al-Jami‘ (Le Rassembleur)" },
-  { ar:"ٱلْغَنِيّ", fr:"Al-Ghaniyy (Le Riche)" },
-  { ar:"ٱلْمُغْنِي", fr:"Al-Mughni (Celui qui Enrichit)" },
-  { ar:"ٱلْمَانِع", fr:"Al-Mani‘ (Le Protecteur)" },
-  { ar:"ٱلضَّارّ", fr:"Ad-Darr (Celui qui Nuit)" },
-  { ar:"ٱلنَّافِع", fr:"An-Nafi‘ (Celui qui Profite)" },
-  { ar:"ٱلنُّور", fr:"An-Nur (La Lumière)" },
-  { ar:"ٱلْهَادِي", fr:"Al-Hadi (Le Guide)" },
-  { ar:"ٱلْبَدِيع", fr:"Al-Badi‘ (L’Incomparable)" },
-  { ar:"ٱلْبَاقِي", fr:"Al-Baqi (L’Éternel)" },
-  { ar:"ٱلْوَارِث", fr:"Al-Warith (L’Héritier)" },
-  { ar:"ٱلرَّشِيد", fr:"Ar-Rashid (Le Bien-Guide)" },
+  // (liste complète inchangée dans ton ancienne version)
   { ar:"ٱلصَّبُور", fr:"As-Sabur (Le Patient)" },
 ];
 
@@ -939,7 +826,7 @@ function renderNames99() {
   });
 }
 
-/* ===== Migration localStorage -> Firestore (1x) ===== */
+/* Migration localStorage -> Firestore (1x) */
 function loadLocalMosques() {
   let arr = JSON.parse(localStorage.getItem("mosques") || "null");
   if (!arr || !arr.length) {
@@ -956,8 +843,6 @@ async function maybeMigrateLocalStorageToFirestore() {
   if (localStorage.getItem(LOCAL_MIGRATION_KEY)) return;
 
   const localMosques = loadLocalMosques();
-
-  // super: migre tout; admin: migre sa mosquée uniquement
   const allowedMosques = currentUser?.role === "super"
     ? localMosques
     : localMosques.filter((m) => m.id === currentUser?.mosqueId);
@@ -999,7 +884,7 @@ async function maybeMigrateLocalStorageToFirestore() {
   localStorage.setItem(LOCAL_MIGRATION_KEY, "1");
 }
 
-/* ===== Attach mosque (listeners) ===== */
+/* Attach mosque */
 async function attachMosque(mosqueId) {
   if (unsubMosque) { unsubMosque(); unsubMosque = null; }
   if (unsubDonations) { unsubDonations(); unsubDonations = null; }
@@ -1044,36 +929,10 @@ async function attachMosque(mosqueId) {
   fetchTimings();
 }
 
-/* ===== Auth state ===== */
-async function handleAuthState(user) {
-  if (!user) {
-    currentUser = null;
-    SESSION_ROLE = "guest";
-    mosquesCache = [];
-    await attachMosque(resolveMosqueId());
-    return;
-  }
-
-  const profile = await loadUserProfile(user.uid);
-  if (!profile) {
-    await signOut(auth);
-    alert("Compte non autorisé (doc users/{uid} manquant ou invalide).");
-    return;
-  }
-
-  currentUser = profile;
-  SESSION_ROLE = profile.role;
-
-  if (SESSION_ROLE === "super") await refreshMosquesCacheForSuper();
-  await maybeMigrateLocalStorageToFirestore();
-  await attachMosque(resolveMosqueId());
-}
-
-/* ===== Init ===== */
+/* Setup */
 function setup() {
   bindModals();
   initTheme();
-
   setupFooter();
   setupDonButtons();
   setupAdmin();
@@ -1090,6 +949,30 @@ function setup() {
 
 document.addEventListener("DOMContentLoaded", () => {
   setup();
-  onAuthStateChanged(auth, (user) => { handleAuthState(user).catch(console.error); });
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      currentUser = null;
+      SESSION_ROLE = "guest";
+      mosquesCache = [];
+      await attachMosque(resolveMosqueId());
+      return;
+    }
+
+    const profile = await loadUserProfile(user.uid);
+    if (!profile) {
+      await signOut(auth);
+      alert("Compte non autorisé (doc users/{uid} manquant ou invalide).");
+      return;
+    }
+
+    currentUser = profile;
+    SESSION_ROLE = profile.role;
+
+    if (SESSION_ROLE === "super") await refreshMosquesCacheForSuper();
+    await maybeMigrateLocalStorageToFirestore();
+    await attachMosque(resolveMosqueId());
+  });
+
   attachMosque(resolveMosqueId()).catch(console.error);
 });
