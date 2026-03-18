@@ -68,15 +68,45 @@ const CITY_COORDS = {
 };
 
 const DEFAULT_MOSQUES = [
-  { id: "bene-tally", name: "Bene Tally", city: "Medina", wave: "772682103", orange: "772682103", contact: "Imam Diallo", phone: "+221772682103", jumua: "13:30", ann: "Bienvenue à Bene Tally.", events: [{ title: "Cours de Fiqh", date: "Mardi après Isha" }], method: 3, school: 0, offsets: [0, 0, 0, 0, 0, 0] },
-  { id: "medina-centre", name: "Medina Centre", city: "Dakar", wave: "770000000", orange: "780000000", contact: "Imam Ndiaye", phone: "+221780000000", jumua: "14:00", ann: "Annonce importante pour la Medina.", events: [{ title: "Cercle de Coran", date: "Samedi après Fajr" }], method: 3, school: 0, offsets: [0, 0, 0, 0, 0, 0] },
+  {
+    id: "bene-tally",
+    name: "Bene Tally",
+    city: "Medina",
+    wave: "772682103",
+    orange: "772682103",
+    contact: "Imam Diallo",
+    phone: "+221772682103",
+    jumua: "13:30",
+    ann: "Bienvenue à Bene Tally.",
+    events: [{ title: "Cours de Fiqh", date: "Mardi après Isha" }],
+    method: 3,
+    school: 0,
+    offsets: [0, 0, 0, 0, 0, 0],
+  },
+  {
+    id: "medina-centre",
+    name: "Medina Centre",
+    city: "Dakar",
+    wave: "770000000",
+    orange: "780000000",
+    contact: "Imam Ndiaye",
+    phone: "+221780000000",
+    jumua: "14:00",
+    ann: "Annonce importante pour la Medina.",
+    events: [{ title: "Cercle de Coran", date: "Samedi après Fajr" }],
+    method: 3,
+    school: 0,
+    offsets: [0, 0, 0, 0, 0, 0],
+  },
 ];
 
 const MOCK = { Fajr: "05:45", Sunrise: "07:00", Dhuhr: "13:30", Asr: "16:45", Maghrib: "19:05", Isha: "20:30" };
 
+// Ramadan
 const RAMADAN_START_DATE = "2026-02-18";
 const RAMADAN_TOTAL_DAYS = 30;
 
+// Dons
 const DON_CATEGORIES = ["Zakat", "Sadaqa", "Travaux"];
 const DON_CATEGORY_HELP = {
   Zakat: "Zakat : obligation (selon conditions).",
@@ -88,7 +118,7 @@ const el = (id) => document.getElementById(id);
 let timingsData = null;
 
 /* Firestore state */
-let mosquesCache = [];
+let mosquesCache = []; // super only
 let activeMosque = null;
 let unsubMosque = null;
 let unsubDonations = null;
@@ -96,7 +126,7 @@ let latestDonations = [];
 
 const LOCAL_MIGRATION_KEY = "firestore_migrated_v1";
 
-/* UI helpers */
+/* Utils */
 function showStatus(msg, bg) {
   const node = el("status");
   if (!node) return;
@@ -112,7 +142,9 @@ function showPopup(msg, title = "Merci 🙏") {
   const p = el("popup-text");
   if (t) t.textContent = title;
   if (p) p.textContent = msg;
+
   openModal("modal-popup");
+
   if (popupTimer) clearTimeout(popupTimer);
   popupTimer = setTimeout(() => closeAll(), 10000);
 }
@@ -154,15 +186,7 @@ function getUrlMosqueId() {
   return m || null;
 }
 
-function resolveMosqueId() {
-  const forced = getUrlMosqueId();
-  if (forced) return forced;
-  if (currentUser?.role === "admin" && currentUser?.mosqueId) return currentUser.mosqueId;
-  return localStorage.getItem("currentMosqueId") || DEFAULT_MOSQUES[0].id;
-}
-function setCurrentMosqueId(id) { localStorage.setItem("currentMosqueId", id); }
-
-/* Theme */
+/* THEME */
 function applyTheme(theme) {
   document.body.classList.toggle("dark", theme === "dark");
   localStorage.setItem("theme", theme);
@@ -186,12 +210,14 @@ function bindModals() {
   window.addEventListener("click", (e) => {
     if (e.target && e.target.classList && e.target.classList.contains("modal")) closeAll();
   });
+
   const ok = el("popup-ok");
   if (ok) ok.onclick = () => closeAll();
 }
 
 /* Auth login (téléphone/pin possible via pseudo-email) */
 const PSEUDO_DOMAIN = "mymosque.sn";
+
 function normalizePhone(input) {
   const raw = String(input || "").trim();
   const digits = raw.replace(/\D/g, "");
@@ -207,10 +233,12 @@ async function promptLogin() {
   if (!phoneOrEmail) return null;
   const pin = prompt("Code (PIN) :");
   if (!pin) return null;
+
   const email = phoneOrEmail.includes("@") ? phoneOrEmail.trim() : phoneToEmail(phoneOrEmail);
   return signInWithEmailAndPassword(auth, email, pin);
 }
 
+/* Firestore refs */
 function usersDocRef(uid) { return doc(db, "users", uid); }
 function mosqueDocRef(mosqueId) { return doc(db, "mosques", mosqueId); }
 function donationsColRef(mosqueId) { return collection(db, "mosques", mosqueId, "donations"); }
@@ -221,10 +249,21 @@ async function loadUserProfile(uid) {
   const data = snap.data();
   const role = data.role;
   const mosqueId = data.mosqueId || null;
+
   if (role !== "admin" && role !== "super") return null;
   if (role === "admin" && !mosqueId) return null;
+
   return { uid, role, mosqueId };
 }
+
+/* Access */
+function resolveMosqueId() {
+  const forced = getUrlMosqueId();
+  if (forced) return forced;
+  if (currentUser?.role === "admin" && currentUser?.mosqueId) return currentUser.mosqueId;
+  return localStorage.getItem("currentMosqueId") || DEFAULT_MOSQUES[0].id;
+}
+function setCurrentMosqueId(id) { localStorage.setItem("currentMosqueId", id); }
 
 function canSelectMosque() {
   const forced = !!getUrlMosqueId();
@@ -235,6 +274,7 @@ function refreshMosqueAccessUI() {
   const locked = el("mosque-locked");
   const lockedName = el("mosque-locked-name");
   const row = el("mosque-select-row");
+
   if (canSelectMosque()) {
     locked.style.display = "none";
     row.style.display = "flex";
@@ -248,6 +288,7 @@ function refreshMosqueAccessUI() {
 function populateMosqueSelector() {
   const sel = el("mosque-selector");
   if (!sel) return;
+
   sel.innerHTML = "";
   const list = (currentUser?.role === "super") ? mosquesCache : (activeMosque ? [activeMosque] : []);
   list.forEach((m) => {
@@ -256,6 +297,7 @@ function populateMosqueSelector() {
     o.textContent = m.name;
     sel.appendChild(o);
   });
+
   sel.value = activeMosque?.id || resolveMosqueId();
   sel.onchange = async (e) => {
     if (!canSelectMosque()) return;
@@ -265,7 +307,7 @@ function populateMosqueSelector() {
   };
 }
 
-/* Clock */
+/* UI header */
 function updateClock() {
   const n = new Date();
   el("current-time").textContent = [n.getHours(), n.getMinutes(), n.getSeconds()].map((v) => String(v).padStart(2, "0")).join(":");
@@ -332,7 +374,7 @@ function updateNextCountdown() {
   if (item) item.classList.add("current");
 }
 
-/* Timings */
+/* Timings API */
 function mockData() {
   return { timings: MOCK, date: { hijri: { day: "3", month: { ar: "Rabi' al-Awwal" }, year: "1447" } } };
 }
@@ -427,16 +469,25 @@ async function submitDonationRequest() {
   });
 
   closeAll();
-  showPopup(`Merci pour votre don de ${amount.toLocaleString("fr-FR")} CFA.\nIl est en attente de confirmation.`, "Merci 🙏");
+  showPopup(
+    `Merci pour votre don de ${amount.toLocaleString("fr-FR")} CFA.\nIl est en attente de confirmation.`,
+    "Merci 🙏"
+  );
 }
 
-function pendingCount() { return latestDonations.filter((x) => x.status === "pending").length; }
+function pendingCount() {
+  return latestDonations.filter((x) => x.status === "pending").length;
+}
 function updateAdminBadge() {
   const b = el("admin-badge");
   const n = pendingCount();
   if (!b) return;
-  if (n > 0) { b.textContent = String(n); b.style.display = "inline-block"; }
-  else b.style.display = "none";
+  if (n > 0) {
+    b.textContent = String(n);
+    b.style.display = "inline-block";
+  } else {
+    b.style.display = "none";
+  }
 }
 
 function formatDonationRow(d) {
@@ -462,21 +513,35 @@ function formatDonationRow(d) {
   `;
 }
 
+/* ✅ FIX IMPORTANT: handler OK/X est ICI (pas ailleurs) */
 function renderReqTable() {
   const tb = document.querySelector("#req-table tbody");
   if (!tb) return;
+
   tb.innerHTML = "";
   latestDonations.forEach((r) => {
     const tr = document.createElement("tr");
     tr.innerHTML = formatDonationRow(r);
     tb.appendChild(tr);
   });
+
   tb.querySelectorAll("button[data-act]").forEach((b) => {
-    b.onclick = () => setReqStatus(b.dataset.id, b.dataset.act);
+    b.onclick = async () => {
+      try {
+        await setReqStatus(b.dataset.id, b.dataset.act);
+        showStatus("Mise à jour OK.", "#16a34a");
+      } catch (e) {
+        console.error(e);
+        alert("Impossible de valider : " + (e?.message || String(e)));
+        showStatus("Erreur validation.", "#ef4444");
+      }
+    };
   });
+
   updateAdminBadge();
 }
 
+/* ✅ Confirmation OK/X + update total mensuel */
 async function setReqStatus(donationId, act) {
   if (!activeMosque) return;
   if (SESSION_ROLE === "guest") return;
@@ -493,6 +558,7 @@ async function setReqStatus(donationId, act) {
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(donationRef);
     if (!snap.exists()) return;
+
     const d = snap.data();
     if (d.status !== "pending") return;
 
@@ -504,6 +570,7 @@ async function setReqStatus(donationId, act) {
       const sums = { ...(m.stats?.monthlySums || {}) };
       const key = ymKey();
       sums[key] = Number(sums[key] || 0) + Number(d.amount || 0);
+
       tx.set(mosqueRef, { stats: { monthlySums: sums } }, { merge: true });
     } else if (act === "no") {
       tx.update(donationRef, { status: "rejected" });
@@ -613,8 +680,8 @@ function fillAdminForm(id) {
   el("adm-jumua").value = m.jumua || "13:30";
   el("adm-ann").value = m.ann || "";
   el("adm-events").value = (m.events || []).map((e) => `${e.title} | ${e.date}`).join("\n");
-  el("adm-goal").value = getMonthlyGoal(m);
 
+  el("adm-goal").value = getMonthlyGoal(m);
   renderReqTable();
 }
 
@@ -804,21 +871,118 @@ function displayAll(data) {
   populateMosqueSelector();
 }
 
-/* 99 names */
+/* 99 Noms (liste complète) */
 const NAMES_99 = [
-  { ar:"ٱللَّٰه", fr:"Allah" },
-  { ar:"ٱلرَّحْمَٰن", fr:"Ar-Rahman (Le Tout Miséricordieux)" },
-  { ar:"ٱلرَّحِيم", fr:"Ar-Rahim (Le Très Miséricordieux)" },
-  // (liste complète inchangée dans ton ancienne version)
-  { ar:"ٱلصَّبُور", fr:"As-Sabur (Le Patient)" },
+  { ar:'ٱللَّٰه', fr:'Allah' },
+  { ar:'ٱلرَّحْمَٰن', fr:'Ar-Rahman (Le Tout Miséricordieux)' },
+  { ar:'ٱلرَّحِيم', fr:'Ar-Rahim (Le Très Miséricordieux)' },
+  { ar:'ٱلْمَلِك', fr:'Al-Malik (Le Souverain)' },
+  { ar:'ٱلْقُدُّوس', fr:'Al-Quddus (Le Saint)' },
+  { ar:'ٱلسَّلَام', fr:'As-Salam (La Paix)' },
+  { ar:'ٱلْمُؤْمِن', fr:"Al-Mu’min (Le Garant)" },
+  { ar:'ٱلْمُهَيْمِن', fr:'Al-Muhaymin (Le Protecteur)' },
+  { ar:'ٱلْعَزِيز', fr:'Al-‘Aziz (Le Tout-Puissant)' },
+  { ar:'ٱلْجَبَّار', fr:'Al-Jabbar (Le Contraignant)' },
+  { ar:'ٱلْمُتَكَبِّر', fr:'Al-Mutakabbir (Le Suprême)' },
+  { ar:'ٱلْخَالِق', fr:'Al-Khaliq (Le Créateur)' },
+  { ar:'ٱلْبَارِئ', fr:'Al-Bari’ (Le Producteur)' },
+  { ar:'ٱلْمُصَوِّر', fr:'Al-Musawwir (Le Formateur)' },
+  { ar:'ٱلْغَفَّار', fr:'Al-Ghaffar (Le Grand Pardonneur)' },
+  { ar:'ٱلْقَهَّار', fr:'Al-Qahhar (Le Dominateur)' },
+  { ar:'ٱلْوَهَّاب', fr:'Al-Wahhab (Le Donateur)' },
+  { ar:'ٱلرَّزَّاق', fr:'Ar-Razzaq (Le Pourvoyeur)' },
+  { ar:'ٱلْفَتَّاح', fr:'Al-Fattah (L’Ouvreur)' },
+  { ar:'ٱلْعَلِيم', fr:'Al-‘Alim (L’Omniscient)' },
+  { ar:'ٱلْقَابِض', fr:'Al-Qabid (Celui qui Retient)' },
+  { ar:'ٱلْبَاسِط', fr:'Al-Basit (Celui qui Étend)' },
+  { ar:'ٱلْخَافِض', fr:'Al-Khafid (Celui qui Abaisse)' },
+  { ar:'ٱلرَّافِع', fr:'Ar-Rafi‘ (Celui qui Élève)' },
+  { ar:'ٱلْمُعِزّ', fr:'Al-Mu‘izz (Celui qui Honore)' },
+  { ar:'ٱلْمُذِلّ', fr:'Al-Mudhill (Celui qui Humilie)' },
+  { ar:'ٱلسَّمِيع', fr:'As-Sami‘ (L’Audient)' },
+  { ar:'ٱلْبَصِير', fr:'Al-Basir (Le Clairvoyant)' },
+  { ar:'ٱلْحَكَم', fr:'Al-Hakam (Le Juge)' },
+  { ar:'ٱلْعَدْل', fr:'Al-‘Adl (Le Juste)' },
+  { ar:'ٱللَّطِيف', fr:'Al-Latif (Le Subtil)' },
+  { ar:'ٱلْخَبِير', fr:'Al-Khabir (Le Parfaitement Connaisseur)' },
+  { ar:'ٱلْحَلِيم', fr:'Al-Halim (Le Longanime)' },
+  { ar:'ٱلْعَظِيم', fr:'Al-‘Azim (L’Immense)' },
+  { ar:'ٱلْغَفُور', fr:'Al-Ghafur (Le Pardonneur)' },
+  { ar:'ٱلشَّكُور', fr:'Ash-Shakur (Le Reconnaissant)' },
+  { ar:'ٱلْعَلِيّ', fr:'Al-‘Aliyy (Le Très-Haut)' },
+  { ar:'ٱلْكَبِير', fr:'Al-Kabir (Le Très-Grand)' },
+  { ar:'ٱلْحَفِيظ', fr:'Al-Hafiz (Le Gardien)' },
+  { ar:'ٱلْمُقِيت', fr:'Al-Muqit (Le Nourricier)' },
+  { ar:'ٱلْحَسِيب', fr:'Al-Hasib (Celui qui Suffit)' },
+  { ar:'ٱلْجَلِيل', fr:'Al-Jalil (Le Majestueux)' },
+  { ar:'ٱلْكَرِيم', fr:'Al-Karim (Le Généreux)' },
+  { ar:'ٱلرَّقِيب', fr:'Ar-Raqib (Le Vigilant)' },
+  { ar:'ٱلْمُجِيب', fr:'Al-Mujib (Celui qui Exauce)' },
+  { ar:'ٱلْوَاسِع', fr:'Al-Wasi‘ (L’Immense)' },
+  { ar:'ٱلْحَكِيم', fr:'Al-Hakim (Le Sage)' },
+  { ar:'ٱلْوَدُود', fr:'Al-Wadud (Le Bien-Aimant)' },
+  { ar:'ٱلْمَجِيد', fr:'Al-Majid (Le Glorieux)' },
+  { ar:'ٱلْبَاعِث', fr:'Al-Ba‘ith (Le Ressusciteur)' },
+  { ar:'ٱلشَّهِيد', fr:'Ash-Shahid (Le Témoin)' },
+  { ar:'ٱلْحَقّ', fr:'Al-Haqq (La Vérité)' },
+  { ar:'ٱلْوَكِيل', fr:'Al-Wakil (Le Garant)' },
+  { ar:'ٱلْقَوِيّ', fr:'Al-Qawiyy (Le Fort)' },
+  { ar:'ٱلْمَتِين', fr:'Al-Matin (Le Très-Ferme)' },
+  { ar:'ٱلْوَلِيّ', fr:'Al-Waliyy (Le Protecteur)' },
+  { ar:'ٱلْحَمِيد', fr:'Al-Hamid (Le Digne de Louange)' },
+  { ar:'ٱلْمُحْصِي', fr:'Al-Muhsi (Celui qui Dénombre)' },
+  { ar:'ٱلْمُبْدِئ', fr:'Al-Mubdi’ (Celui qui Initie)' },
+  { ar:'ٱلْمُعِيد', fr:'Al-Mu‘id (Celui qui Répète)' },
+  { ar:'ٱلْمُحْيِي', fr:'Al-Muhyi (Celui qui Donne la Vie)' },
+  { ar:'ٱلْمُمِيت', fr:'Al-Mumit (Celui qui Donne la Mort)' },
+  { ar:'ٱلْحَيّ', fr:'Al-Hayy (Le Vivant)' },
+  { ar:'ٱلْقَيُّوم', fr:'Al-Qayyum (L’Auto-subsistant)' },
+  { ar:'ٱلْوَاجِد', fr:'Al-Wajid (Le Riche)' },
+  { ar:'ٱلْمَاجِد', fr:'Al-Majid (Le Noble)' },
+  { ar:'ٱلْوَاحِد', fr:'Al-Wahid (L’Unique)' },
+  { ar:'ٱلْأَحَد', fr:'Al-Ahad (L’Un)' },
+  { ar:'ٱلصَّمَد', fr:'As-Samad (Le Seul à être Imploré)' },
+  { ar:'ٱلْقَادِر', fr:'Al-Qadir (Le Capable)' },
+  { ar:'ٱلْمُقْتَدِر', fr:'Al-Muqtadir (Le Très-Puissant)' },
+  { ar:'ٱلْمُقَدِّم', fr:'Al-Muqaddim (Celui qui Avance)' },
+  { ar:'ٱلْمُؤَخِّر', fr:'Al-Mu’akhkhir (Celui qui Retarde)' },
+  { ar:'ٱلْأَوَّل', fr:'Al-Awwal (Le Premier)' },
+  { ar:'ٱلْآخِر', fr:'Al-Akhir (Le Dernier)' },
+  { ar:'ٱلظَّاهِر', fr:'Az-Zahir (L’Apparent)' },
+  { ar:'ٱلْبَاطِن', fr:'Al-Batin (Le Caché)' },
+  { ar:'ٱلْوَالِي', fr:'Al-Wali (Le Gouverneur)' },
+  { ar:'ٱلْمُتَعَالِي', fr:'Al-Muta‘ali (Le Très-Élevé)' },
+  { ar:'ٱلْبَرّ', fr:'Al-Barr (Le Bienfaisant)' },
+  { ar:'ٱلتَّوَّاب', fr:'At-Tawwab (Celui qui Accepte le Repentir)' },
+  { ar:'ٱلْمُنْتَقِم', fr:'Al-Muntaqim (Le Vengeur)' },
+  { ar:'ٱلْعَفُوّ', fr:'Al-‘Afuww (L’Indulgent)' },
+  { ar:'ٱلرَّؤُوف', fr:'Ar-Ra’uf (Le Compatissant)' },
+  { ar:'مَالِكُ ٱلْمُلْك', fr:'Malik-ul-Mulk (Maître du Royaume)' },
+  { ar:'ذُو ٱلْجَلَالِ وَٱلْإِكْرَام', fr:'Dhul-Jalali wal-Ikram (Majesté & Générosité)' },
+  { ar:'ٱلْمُقْسِط', fr:'Al-Muqsit (L’Équitable)' },
+  { ar:'ٱلْجَامِع', fr:'Al-Jami‘ (Le Rassembleur)' },
+  { ar:'ٱلْغَنِيّ', fr:'Al-Ghaniyy (Le Riche)' },
+  { ar:'ٱلْمُغْنِي', fr:'Al-Mughni (Celui qui Enrichit)' },
+  { ar:'ٱلْمَانِع', fr:'Al-Mani‘ (Le Protecteur)' },
+  { ar:'ٱلضَّارّ', fr:'Ad-Darr (Celui qui Nuit)' },
+  { ar:'ٱلنَّافِع', fr:'An-Nafi‘ (Celui qui Profite)' },
+  { ar:'ٱلنُّور', fr:'An-Nur (La Lumière)' },
+  { ar:'ٱلْهَادِي', fr:'Al-Hadi (Le Guide)' },
+  { ar:'ٱلْبَدِيع', fr:'Al-Badi‘ (L’Incomparable)' },
+  { ar:'ٱلْبَاقِي', fr:'Al-Baqi (L’Éternel)' },
+  { ar:'ٱلْوَارِث', fr:'Al-Warith (L’Héritier)' },
+  { ar:'ٱلرَّشِيد', fr:'Ar-Rashid (Le Bien-Guide)' },
+  { ar:'ٱلصَّبُور', fr:'As-Sabur (Le Patient)' },
 ];
 
 function renderNames99() {
   const list = el("names-list");
   const header = el("names-header");
   if (!list || !header) return;
+
   header.textContent = "Les 99 Noms d'Allah";
   list.innerHTML = "";
+
   NAMES_99.forEach((n, idx) => {
     const li = document.createElement("li");
     li.innerHTML = `<span><strong>${idx + 1}.</strong> ${escapeHtml(n.fr)}</span><span style="font-weight:900">${escapeHtml(n.ar)}</span>`;
@@ -850,6 +1014,7 @@ async function maybeMigrateLocalStorageToFirestore() {
   for (const m of allowedMosques) {
     const ref = mosqueDocRef(m.id);
     const exists = await getDoc(ref);
+
     if (!exists.exists()) {
       await setDoc(ref, {
         name: m.name || "Mosquée",
@@ -884,7 +1049,7 @@ async function maybeMigrateLocalStorageToFirestore() {
   localStorage.setItem(LOCAL_MIGRATION_KEY, "1");
 }
 
-/* Attach mosque */
+/* Attach mosque (listeners) */
 async function attachMosque(mosqueId) {
   if (unsubMosque) { unsubMosque(); unsubMosque = null; }
   if (unsubDonations) { unsubDonations(); unsubDonations = null; }
@@ -919,7 +1084,6 @@ async function attachMosque(mosqueId) {
     unsubDonations = onSnapshot(q, (qs) => {
       latestDonations = qs.docs.map((d) => ({ id: d.id, ...d.data() }));
       renderReqTable();
-      updateAdminBadge();
       renderDonPublic();
     });
   }
@@ -929,10 +1093,32 @@ async function attachMosque(mosqueId) {
   fetchTimings();
 }
 
+/* Footer */
+function setupFooter() {
+  el("events-btn").onclick = () => { renderEvents(); openModal("modal-events"); };
+
+  el("announce-btn").onclick = () => {
+    openModal("modal-ann");
+    if (!activeMosque) return;
+    localStorage.setItem(`annSeen_${activeMosque.id}_${todayKey()}`, "1");
+    el("notif").style.display = "none";
+  };
+
+  el("about-btn").onclick = () => openModal("modal-about");
+  el("names-btn").onclick = () => { renderNames99(); openModal("modal-names"); };
+
+  el("share-btn").onclick = () => {
+    if (!activeMosque) return;
+    const text = `🕌 ${activeMosque.name}\n${el("gregorian-date").textContent}\n\nFajr: ${el("fajr-time").textContent}\nDhuhr: ${el("dhuhr-time").textContent}\nAsr: ${el("asr-time").textContent}\nMaghrib: ${el("maghrib-time").textContent}\nIsha: ${el("isha-time").textContent}\n\n${location.href}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
+}
+
 /* Setup */
 function setup() {
   bindModals();
   initTheme();
+
   setupFooter();
   setupDonButtons();
   setupAdmin();
@@ -976,4 +1162,3 @@ document.addEventListener("DOMContentLoaded", () => {
 
   attachMosque(resolveMosqueId()).catch(console.error);
 });
-
