@@ -508,25 +508,32 @@ async function setReqStatus(donationId, act) {
   }
 
   await runTransaction(db, async (tx) => {
+    // ✅ READS d'abord
     const snap = await tx.get(donationRef);
     if (!snap.exists()) return;
 
     const d = snap.data();
     if (d.status !== "pending") return;
 
-    if (act === "ok") {
-      tx.update(donationRef, { status: "confirmed", confirmedAt: serverTimestamp() });
+    const mSnap = await tx.get(mosqueRef);
+    const m = mSnap.exists() ? mSnap.data() : {};
+    const sums = { ...(m.stats?.monthlySums || {}) };
+    const key = ymKey();
 
-      const mSnap = await tx.get(mosqueRef);
-      const m = mSnap.exists() ? mSnap.data() : {};
-      const sums = { ...(m.stats?.monthlySums || {}) };
-      const key = ymKey();
+    // ✅ WRITES ensuite
+    if (act === "ok") {
       sums[key] = Number(sums[key] || 0) + Number(d.amount || 0);
+
+      tx.update(donationRef, {
+        status: "confirmed",
+        confirmedAt: serverTimestamp(),
+      });
 
       tx.set(mosqueRef, { stats: { monthlySums: sums } }, { merge: true });
     } else if (act === "no") {
       tx.update(donationRef, { status: "rejected" });
     }
+  
   });
 }
 
