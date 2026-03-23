@@ -1,4 +1,4 @@
- // /app.js
+// /app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
   getAuth,
@@ -23,7 +23,7 @@ import {
   runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-/* Firebase config */
+/* ✅ Firebase config */
 const firebaseConfig = {
   apiKey: "AIzaSyCUOJaDJUo37WeFh61DAFHFN3ON6evAAsQ",
   authDomain: "mymosquee-web.firebaseapp.com",
@@ -67,15 +67,46 @@ const CITY_COORDS = {
 };
 
 const DEFAULT_MOSQUES = [
-  { id: "bene-tally", name: "Bene Tally", city: "Medina", wave: "772682103", orange: "772682103", contact: "Imam Diallo", phone: "+221772682103", jumua: "13:30", ann: "Bienvenue à Bene Tally.", events: [{ title: "Cours de Fiqh", date: "Mardi après Isha" }], method: 3, school: 0, offsets: [0, 0, 0, 0, 0, 0] },
-  { id: "medina-centre", name: "Medina Centre", city: "Dakar", wave: "770000000", orange: "780000000", contact: "Imam Ndiaye", phone: "+221780000000", jumua: "14:00", ann: "Annonce importante pour la Medina.", events: [{ title: "Cercle de Coran", date: "Samedi après Fajr" }], method: 3, school: 0, offsets: [0, 0, 0, 0, 0, 0] },
+  {
+    id: "bene-tally",
+    name: "Bene Tally",
+    city: "Medina",
+    wave: "772682103",
+    orange: "772682103",
+    contact: "Imam Diallo",
+    phone: "+221772682103",
+    jumua: "13:30",
+    ann: "Bienvenue à Bene Tally.",
+    events: [{ title: "Cours de Fiqh", date: "Mardi après Isha" }],
+    method: 3,
+    school: 0,
+    offsets: [0, 0, 0, 0, 0, 0],
+  },
+  {
+    id: "medina-centre",
+    name: "Medina Centre",
+    city: "Dakar",
+    wave: "770000000",
+    orange: "780000000",
+    contact: "Imam Ndiaye",
+    phone: "+221780000000",
+    jumua: "14:00",
+    ann: "Annonce importante pour la Medina.",
+    events: [{ title: "Cercle de Coran", date: "Samedi après Fajr" }],
+    method: 3,
+    school: 0,
+    offsets: [0, 0, 0, 0, 0, 0],
+  },
 ];
 
 const MOCK = { Fajr: "05:45", Sunrise: "07:00", Dhuhr: "13:30", Asr: "16:45", Maghrib: "19:05", Isha: "20:30" };
 
+/* Ramadan (désactivé pour le moment) */
+const RAMADAN_ENABLED = false;
 const RAMADAN_START_DATE = "2026-02-18";
 const RAMADAN_TOTAL_DAYS = 30;
 
+/* Dons */
 const DON_CATEGORIES = ["Zakat", "Sadaqa", "Travaux"];
 const DON_CATEGORY_HELP = {
   Zakat: "Zakat : obligation (selon conditions).",
@@ -84,7 +115,6 @@ const DON_CATEGORY_HELP = {
 };
 
 const el = (id) => document.getElementById(id);
-
 let timingsData = null;
 
 /* Firestore live state */
@@ -96,7 +126,7 @@ let latestDonations = [];
 
 const LOCAL_MIGRATION_KEY = "firestore_migrated_v1";
 
-/* Helpers */
+/* Utils */
 function showStatus(msg, bg) {
   const node = el("status");
   if (!node) return;
@@ -228,16 +258,16 @@ async function loadUserProfile(uid) {
   return { uid, role, mosqueId };
 }
 
-/* Mosque selection UI */
+/* Mosque access */
 function canSelectMosque() {
   const forced = !!getUrlMosqueId();
   return currentUser?.role === "super" && !forced;
 }
-
 function refreshMosqueAccessUI() {
   const locked = el("mosque-locked");
   const lockedName = el("mosque-locked-name");
   const row = el("mosque-select-row");
+
   if (canSelectMosque()) {
     locked.style.display = "none";
     row.style.display = "flex";
@@ -247,10 +277,10 @@ function refreshMosqueAccessUI() {
     lockedName.textContent = activeMosque?.name || "—";
   }
 }
-
 function populateMosqueSelector() {
   const sel = el("mosque-selector");
   if (!sel) return;
+
   sel.innerHTML = "";
   const list = (currentUser?.role === "super") ? mosquesCache : (activeMosque ? [activeMosque] : []);
   list.forEach((m) => {
@@ -259,6 +289,7 @@ function populateMosqueSelector() {
     o.textContent = m.name;
     sel.appendChild(o);
   });
+
   sel.value = activeMosque?.id || resolveMosqueId();
   sel.onchange = async (e) => {
     if (!canSelectMosque()) return;
@@ -284,7 +315,6 @@ function fmt(ms) {
   const s = t % 60;
   return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
 }
-
 function updateNextCountdown() {
   if (!timingsData) {
     el("next-prayer-name").textContent = "Chargement…";
@@ -314,6 +344,7 @@ function updateNextCountdown() {
 
   let name = "";
   let time = null;
+
   for (const k of PRAYER_NAMES) {
     const d = p[k];
     if (d && now < d) { name = k; time = d; break; }
@@ -338,7 +369,6 @@ function updateNextCountdown() {
 function mockData() {
   return { timings: MOCK, date: { hijri: { day: "3", month: { ar: "Rabi' al-Awwal" }, year: "1447" } } };
 }
-
 async function fetchTimings() {
   if (!activeMosque) return;
 
@@ -370,7 +400,7 @@ async function fetchTimings() {
   }
 }
 
-/* Donations */
+/* Dons */
 function normalizeCategory(cat) {
   const c = String(cat || "").trim();
   if (c === "Travaux / Entretien") return "Travaux";
@@ -392,7 +422,6 @@ function getMonthlySum(m) {
   const sums = m?.stats?.monthlySums || {};
   return Number(sums[ymKey()] ?? 0);
 }
-
 function renderDonPublic() {
   if (!activeMosque) return;
   const goal = getMonthlyGoal(activeMosque);
@@ -465,7 +494,7 @@ function formatDonationRow(d) {
   `;
 }
 
-/* ✅ FIX: handler OK/X BIEN placé */
+/* ✅ handler OK/X bien placé */
 function renderReqTable() {
   const tb = document.querySelector("#req-table tbody");
   if (!tb) return;
@@ -493,7 +522,7 @@ function renderReqTable() {
   updateAdminBadge();
 }
 
-/* ✅ Confirm / Reject + update total monthly */
+/* ✅ Confirm / Reject + update total monthly (READS avant WRITES) */
 async function setReqStatus(donationId, act) {
   if (!activeMosque) return;
   if (SESSION_ROLE === "guest") return;
@@ -508,32 +537,25 @@ async function setReqStatus(donationId, act) {
   }
 
   await runTransaction(db, async (tx) => {
-    // ✅ READS d'abord
-    const snap = await tx.get(donationRef);
-    if (!snap.exists()) return;
+    const donationSnap = await tx.get(donationRef);
+    if (!donationSnap.exists()) return;
 
-    const d = snap.data();
+    const d = donationSnap.data();
     if (d.status !== "pending") return;
 
-    const mSnap = await tx.get(mosqueRef);
-    const m = mSnap.exists() ? mSnap.data() : {};
-    const sums = { ...(m.stats?.monthlySums || {}) };
+    const mosqueSnap = await tx.get(mosqueRef);
+    const mosqueData = mosqueSnap.exists() ? mosqueSnap.data() : {};
+    const sums = { ...(mosqueData.stats?.monthlySums || {}) };
     const key = ymKey();
 
-    // ✅ WRITES ensuite
     if (act === "ok") {
       sums[key] = Number(sums[key] || 0) + Number(d.amount || 0);
 
-      tx.update(donationRef, {
-        status: "confirmed",
-        confirmedAt: serverTimestamp(),
-      });
-
+      tx.update(donationRef, { status: "confirmed", confirmedAt: serverTimestamp() });
       tx.set(mosqueRef, { stats: { monthlySums: sums } }, { merge: true });
     } else if (act === "no") {
       tx.update(donationRef, { status: "rejected" });
     }
-  
   });
 }
 
@@ -575,6 +597,38 @@ function setupTasbih() {
   set(get());
   plus.onclick = () => set(get() + 1);
   reset.onclick = () => set(0);
+}
+
+/* ✅ Déconnexion : bouton injecté dans le modal admin */
+function ensureLogoutButton() {
+  const modal = document.getElementById("modal-admin");
+  if (!modal) return;
+
+  const box = modal.querySelector(".box.admin");
+  if (!box) return;
+
+  if (document.getElementById("btn-logout")) return;
+
+  const btn = document.createElement("button");
+  btn.id = "btn-logout";
+  btn.className = "save";
+  btn.style.background = "#0f172a";
+  btn.style.marginTop = "10px";
+  btn.innerHTML = `<i class="fa-solid fa-right-from-bracket"></i> Déconnexion`;
+
+  btn.onclick = async () => {
+    try {
+      await signOut(auth);
+      closeAll();
+      showStatus("Déconnecté ✅", "#0f172a");
+    } catch (e) {
+      alert(e?.message || "Erreur déconnexion");
+    }
+  };
+
+  const saveBtn = document.getElementById("save");
+  if (saveBtn?.parentNode) saveBtn.parentNode.insertBefore(btn, saveBtn.nextSibling);
+  else box.appendChild(btn);
 }
 
 /* Admin */
@@ -629,8 +683,8 @@ function fillAdminForm(id) {
   el("adm-jumua").value = m.jumua || "13:30";
   el("adm-ann").value = m.ann || "";
   el("adm-events").value = (m.events || []).map((e) => `${e.title} | ${e.date}`).join("\n");
-
   el("adm-goal").value = getMonthlyGoal(m);
+
   renderReqTable();
 }
 
@@ -661,6 +715,8 @@ function mosqueToPayloadFromAdminForm() {
 
 function setupAdmin() {
   el("admin-button").onclick = async () => {
+    ensureLogoutButton(); // ✅ ajoute le bouton dans le modal
+
     try {
       if (!auth.currentUser) {
         await promptLogin();
@@ -715,7 +771,7 @@ function renderEvents() {
   box.appendChild(wrap);
 }
 
-/* Ramadan */
+/* Ramadan helpers */
 function formatFastingDurationShort(fajr, maghrib) {
   if (!fajr || !maghrib) return "—";
   const f = parseHM(fajr);
@@ -729,9 +785,14 @@ function formatFastingDurationShort(fajr, maghrib) {
   return `${hh}h ${String(mm).padStart(2, "0")}m`;
 }
 
+/* ✅ Ramadan OFF */
 function renderRamadan() {
   const card = el("ramadan-card");
   if (!card) return;
+  if (!RAMADAN_ENABLED) {
+    card.style.display = "none";
+    return;
+  }
 
   const start = new Date(`${RAMADAN_START_DATE}T00:00:00`);
   const now = new Date();
@@ -769,7 +830,7 @@ function setupFooter() {
   };
 
   el("about-btn").onclick = () => openModal("modal-about");
-  el("names-btn").onclick = () => openModal("modal-names"); // names list optional
+  el("names-btn").onclick = () => openModal("modal-names");
 
   el("share-btn").onclick = () => {
     if (!activeMosque) return;
@@ -820,7 +881,7 @@ function displayAll(data) {
   populateMosqueSelector();
 }
 
-/* Storage local fallback */
+/* Local fallback */
 function loadLocalMosques() {
   let arr = JSON.parse(localStorage.getItem("mosques") || "null");
   if (!arr || !arr.length) {
@@ -829,12 +890,11 @@ function loadLocalMosques() {
   }
   return arr;
 }
-
-/* Migration localStorage -> Firestore (1x) */
 function loadLocalDonationReq(mosqueId) {
   return JSON.parse(localStorage.getItem(`donreq_${mosqueId}`) || "[]");
 }
 
+/* Migration localStorage -> Firestore (1x) */
 async function maybeMigrateLocalStorageToFirestore() {
   if (localStorage.getItem(LOCAL_MIGRATION_KEY)) return;
 
@@ -878,36 +938,28 @@ async function maybeMigrateLocalStorageToFirestore() {
         });
       }
     } catch {
-      // silent
+      // ignore
     }
   }
 
   localStorage.setItem(LOCAL_MIGRATION_KEY, "1");
 }
 
-/* ✅ ROBUST attachMosque: Firestore -> fallback local */
+/* ✅ Robust attachMosque: Firestore -> fallback local */
 async function attachMosque(mosqueId) {
   if (unsubMosque) { unsubMosque(); unsubMosque = null; }
   if (unsubDonations) { unsubDonations(); unsubDonations = null; }
   latestDonations = [];
 
-  // Fallback local mosque always available
   const localArr = loadLocalMosques();
   const localFallback = localArr.find((m) => m.id === mosqueId) || localArr[0] || DEFAULT_MOSQUES[0];
 
   try {
     const ref = mosqueDocRef(mosqueId);
     const snap = await getDoc(ref);
-
-    if (snap.exists()) {
-      activeMosque = { id: snap.id, ...snap.data() };
-    } else {
-      activeMosque = localFallback;
-    }
-
+    activeMosque = snap.exists() ? { id: snap.id, ...snap.data() } : localFallback;
     setCurrentMosqueId(activeMosque.id);
 
-    // Live mosque updates (if readable)
     unsubMosque = onSnapshot(mosqueDocRef(activeMosque.id), (s) => {
       if (!s.exists()) return;
       activeMosque = { id: s.id, ...s.data() };
@@ -917,7 +969,6 @@ async function attachMosque(mosqueId) {
       renderDonPublic();
     }, () => { /* ignore */ });
 
-    // Live donations for admin/super
     if (SESSION_ROLE !== "guest") {
       const q = query(donationsColRef(activeMosque.id), orderBy("createdAt", "desc"), limit(200));
       unsubDonations = onSnapshot(q, (qs) => {
@@ -927,7 +978,6 @@ async function attachMosque(mosqueId) {
       }, () => { /* ignore */ });
     }
   } catch {
-    // Firestore failed => fallback local
     activeMosque = localFallback;
     setCurrentMosqueId(activeMosque.id);
   }
@@ -937,7 +987,7 @@ async function attachMosque(mosqueId) {
   fetchTimings();
 }
 
-/* Init */
+/* Setup */
 function setup() {
   bindModals();
   initTheme();
@@ -980,8 +1030,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (SESSION_ROLE === "super") {
       try {
-        const snaps = await getDocs(collection(db, "mosques"));
-        mosquesCache = snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
+        await refreshMosquesCacheForSuper();
       } catch {
         mosquesCache = loadLocalMosques();
       }
