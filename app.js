@@ -101,7 +101,7 @@ const DEFAULT_MOSQUES = [
 
 const MOCK = { Fajr: "05:45", Sunrise: "07:00", Dhuhr: "13:30", Asr: "16:45", Maghrib: "19:05", Isha: "20:30" };
 
-/* Ramadan (désactivé pour le moment) */
+/* Ramadan (désactivé) */
 const RAMADAN_ENABLED = false;
 const RAMADAN_START_DATE = "2026-02-18";
 const RAMADAN_TOTAL_DAYS = 30;
@@ -115,6 +115,7 @@ const DON_CATEGORY_HELP = {
 };
 
 const el = (id) => document.getElementById(id);
+
 let timingsData = null;
 
 /* Firestore live state */
@@ -220,7 +221,7 @@ function bindModals() {
   if (ok) ok.onclick = () => closeAll();
 }
 
-/* Auth pseudo-email */
+/* Auth pseudo-email (téléphone) */
 const PSEUDO_DOMAIN = "mymosque.sn";
 function normalizePhone(input) {
   const raw = String(input || "").trim();
@@ -494,7 +495,7 @@ function formatDonationRow(d) {
   `;
 }
 
-/* ✅ handler OK/X bien placé */
+/* ✅ handler OK/X */
 function renderReqTable() {
   const tb = document.querySelector("#req-table tbody");
   if (!tb) return;
@@ -550,7 +551,6 @@ async function setReqStatus(donationId, act) {
 
     if (act === "ok") {
       sums[key] = Number(sums[key] || 0) + Number(d.amount || 0);
-
       tx.update(donationRef, { status: "confirmed", confirmedAt: serverTimestamp() });
       tx.set(mosqueRef, { stats: { monthlySums: sums } }, { merge: true });
     } else if (act === "no") {
@@ -629,6 +629,90 @@ function ensureLogoutButton() {
   const saveBtn = document.getElementById("save");
   if (saveBtn?.parentNode) saveBtn.parentNode.insertBefore(btn, saveBtn.nextSibling);
   else box.appendChild(btn);
+}
+
+/* ✅ UX Super Admin */
+function slugifyMosqueId(name) {
+  return String(name || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 32);
+}
+
+function ensureAdminUX() {
+  const modal = document.getElementById("modal-admin");
+  if (!modal) return;
+  const box = modal.querySelector(".box.admin");
+  if (!box) return;
+
+  if (!document.getElementById("admin-ux-hint")) {
+    const hint = document.createElement("div");
+    hint.id = "admin-ux-hint";
+    hint.className = "small";
+    hint.style.marginTop = "6px";
+    hint.style.marginBottom = "10px";
+    hint.style.textAlign = "left";
+    hint.innerHTML = `Super admin : saisis le <strong>nom</strong> de la mosquée, puis clique <strong>Ajouter</strong>. L’ID technique est généré automatiquement.`;
+    const title = box.querySelector("h3");
+    if (title?.parentNode) title.parentNode.insertBefore(hint, title.nextSibling);
+  }
+
+  const makeCollapsible = (h3Text) => {
+    const h3 = Array.from(box.querySelectorAll("h3")).find((x) => x.textContent.trim() === h3Text);
+    if (!h3 || h3.dataset.collapsible === "1") return;
+
+    h3.dataset.collapsible = "1";
+    h3.style.cursor = "pointer";
+    h3.title = "Cliquer pour plier/déplier";
+
+    const nodes = [];
+    let n = h3.nextElementSibling;
+    while (n && n.tagName.toLowerCase() !== "h3") {
+      nodes.push(n);
+      n = n.nextElementSibling;
+    }
+
+    let open = true;
+    const apply = () => nodes.forEach((x) => { x.style.display = open ? "" : "none"; });
+
+    h3.addEventListener("click", () => {
+      open = !open;
+      apply();
+    });
+  };
+
+  makeCollapsible("Collecte (public)");
+  makeCollapsible("Demandes de dons (à valider)");
+}
+
+function wireSuperAddMosqueUX() {
+  const nameInput = document.getElementById("adm-new-name");
+  const addBtn = document.getElementById("add-mosque");
+  if (!nameInput || !addBtn) return;
+  if (addBtn.dataset.wired === "1") return;
+  addBtn.dataset.wired = "1";
+
+  if (!document.getElementById("adm-new-preview")) {
+    const p = document.createElement("div");
+    p.id = "adm-new-preview";
+    p.className = "small";
+    p.style.marginTop = "6px";
+    p.style.textAlign = "left";
+    p.textContent = "ID : —";
+    nameInput.parentNode.appendChild(p);
+  }
+  const preview = document.getElementById("adm-new-preview");
+
+  const updatePreview = () => {
+    const id = slugifyMosqueId(nameInput.value);
+    preview.textContent = `ID : ${id || "—"}`;
+  };
+
+  nameInput.addEventListener("input", updatePreview);
+  updatePreview();
 }
 
 /* Admin */
@@ -715,7 +799,9 @@ function mosqueToPayloadFromAdminForm() {
 
 function setupAdmin() {
   el("admin-button").onclick = async () => {
-    ensureLogoutButton(); // ✅ ajoute le bouton dans le modal
+    ensureLogoutButton();
+    ensureAdminUX();
+    wireSuperAddMosqueUX();
 
     try {
       if (!auth.currentUser) {
@@ -967,7 +1053,7 @@ async function attachMosque(mosqueId) {
       populateMosqueSelector();
       fetchTimings();
       renderDonPublic();
-    }, () => { /* ignore */ });
+    }, () => {});
 
     if (SESSION_ROLE !== "guest") {
       const q = query(donationsColRef(activeMosque.id), orderBy("createdAt", "desc"), limit(200));
@@ -975,7 +1061,7 @@ async function attachMosque(mosqueId) {
         latestDonations = qs.docs.map((d) => ({ id: d.id, ...d.data() }));
         renderReqTable();
         renderDonPublic();
-      }, () => { /* ignore */ });
+      }, () => {});
     }
   } catch {
     activeMosque = localFallback;
