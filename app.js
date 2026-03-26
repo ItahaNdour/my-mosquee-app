@@ -574,7 +574,6 @@ async function setReqStatus(donationId, act) {
   }
 
   await runTransaction(db, async (tx) => {
-    // READS first
     const donationSnap = await tx.get(donationRef);
     if (!donationSnap.exists()) return;
 
@@ -586,7 +585,6 @@ async function setReqStatus(donationId, act) {
     const sums = { ...(mosqueData.stats?.monthlySums || {}) };
     const key = ymKey();
 
-    // WRITES after
     if (act === "ok") {
       sums[key] = Number(sums[key] || 0) + Number(d.amount || 0);
       tx.update(donationRef, { status: "confirmed", confirmedAt: serverTimestamp() });
@@ -624,21 +622,156 @@ function setupDonButtons() {
 }
 
 /* =========================
-   Tasbih
+   Tasbih v2 (NEW)
 ========================= */
 function setupTasbih() {
-  const k = "tasbih_count";
+  const rootCountId = "tasbih_count";
+  const rootDayId = "tasbih_count_day";
+  const rootGoalId = "tasbih_goal";
+  const rootVibeId = "tasbih_vibe";
+  const rootDayKeyId = "tasbih_day_key";
+
   const countEl = el("tasbih-count");
   const plus = el("tasbih-plus");
   const reset = el("tasbih-reset");
   if (!countEl || !plus || !reset) return;
 
-  const get = () => parseInt(localStorage.getItem(k) || "0", 10) || 0;
-  const set = (v) => { localStorage.setItem(k, String(v)); countEl.textContent = String(v); };
+  const dayKey = todayKey();
+  const storedDayKey = localStorage.getItem(rootDayKeyId);
+  if (storedDayKey !== dayKey) {
+    localStorage.setItem(rootDayKeyId, dayKey);
+    localStorage.setItem(rootDayId, "0");
+  }
 
-  set(get());
-  plus.onclick = () => set(get() + 1);
-  reset.onclick = () => set(0);
+  const getCount = () => parseInt(localStorage.getItem(rootCountId) || "0", 10) || 0;
+  const setCount = (v) => {
+    const nv = Math.max(0, parseInt(v, 10) || 0);
+    localStorage.setItem(rootCountId, String(nv));
+    countEl.textContent = String(nv);
+    renderTasbihMeta();
+  };
+
+  const getDay = () => parseInt(localStorage.getItem(rootDayId) || "0", 10) || 0;
+  const incDay = (delta) => {
+    const nv = Math.max(0, getDay() + delta);
+    localStorage.setItem(rootDayId, String(nv));
+  };
+
+  const getGoal = () => {
+    const g = parseInt(localStorage.getItem(rootGoalId) || "33", 10);
+    return [33, 99, 100].includes(g) ? g : 33;
+  };
+  const setGoal = (v) => {
+    const g = parseInt(v, 10);
+    localStorage.setItem(rootGoalId, String([33, 99, 100].includes(g) ? g : 33));
+    renderTasbihMeta();
+  };
+
+  const getVibe = () => localStorage.getItem(rootVibeId) !== "0";
+  const setVibe = (on) => localStorage.setItem(rootVibeId, on ? "1" : "0");
+
+  const vibrate = () => {
+    if (!getVibe()) return;
+    if (navigator.vibrate) navigator.vibrate(30);
+  };
+
+  const toolBox = countEl.closest(".tool");
+  if (!toolBox) return;
+
+  if (!document.getElementById("tasbih-minus")) {
+    const actions = toolBox.querySelector(".tasbih-actions");
+    const minus = document.createElement("button");
+    minus.id = "tasbih-minus";
+    minus.className = "btn btn-ghost";
+    minus.textContent = "-1";
+    actions.insertBefore(minus, actions.firstChild);
+  }
+
+  if (!document.getElementById("tasbih-meta")) {
+    const meta = document.createElement("div");
+    meta.id = "tasbih-meta";
+    meta.className = "small";
+    meta.style.display = "grid";
+    meta.style.gap = "6px";
+
+    meta.innerHTML = `
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <strong>Objectif</strong>
+        <select id="tasbih-goal" style="padding:8px;border-radius:10px;border:1px solid rgba(229,231,235,.7);font-weight:900">
+          <option value="33">33</option>
+          <option value="99">99</option>
+          <option value="100">100</option>
+        </select>
+
+        <label style="display:flex; gap:8px; align-items:center; font-weight:900">
+          <input id="tasbih-vibe" type="checkbox" />
+          Vibration
+        </label>
+      </div>
+
+      <div id="tasbih-progress" style="height:8px;border-radius:999px;overflow:hidden;background:rgba(232,244,241,.95)">
+        <span id="tasbih-progress-bar" style="display:block;height:100%;width:0%;background:#16a34a"></span>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; gap:10px">
+        <span>Aujourd’hui : <strong id="tasbih-today">0</strong></span>
+        <span>Reste : <strong id="tasbih-left">0</strong></span>
+      </div>
+    `;
+
+    toolBox.querySelector(".tasbih")?.appendChild(meta);
+  }
+
+  const minusBtn = document.getElementById("tasbih-minus");
+  const goalSel = document.getElementById("tasbih-goal");
+  const vibeChk = document.getElementById("tasbih-vibe");
+
+  function renderTasbihMeta() {
+    const goal = getGoal();
+    const count = getCount();
+    const today = getDay();
+
+    const withinGoal = count % goal;
+    const left = withinGoal === 0 ? goal : Math.max(0, goal - withinGoal);
+
+    const todayEl = document.getElementById("tasbih-today");
+    const leftEl = document.getElementById("tasbih-left");
+    const bar = document.getElementById("tasbih-progress-bar");
+
+    if (todayEl) todayEl.textContent = String(today);
+    if (leftEl) leftEl.textContent = String(left);
+
+    const pct = Math.min(100, Math.round((withinGoal * 100) / goal));
+    if (bar) bar.style.width = `${pct}%`;
+
+    if (goalSel) goalSel.value = String(goal);
+    if (vibeChk) vibeChk.checked = getVibe();
+  }
+
+  setCount(getCount());
+  renderTasbihMeta();
+
+  plus.onclick = () => {
+    setCount(getCount() + 1);
+    incDay(1);
+    vibrate();
+  };
+
+  minusBtn.onclick = () => {
+    if (getCount() <= 0) return;
+    setCount(getCount() - 1);
+    incDay(-1);
+    vibrate();
+  };
+
+  reset.onclick = () => {
+    setCount(0);
+    localStorage.setItem(rootDayId, "0");
+    renderTasbihMeta();
+  };
+
+  goalSel.onchange = () => setGoal(goalSel.value);
+  vibeChk.onchange = () => setVibe(!!vibeChk.checked);
 }
 
 /* =========================
@@ -1317,7 +1450,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   attachMosque(resolveMosqueId()).catch(console.error);
 
-  // fallback timings if something blocks
   setTimeout(() => {
     const fajr = document.getElementById("fajr-time")?.textContent;
     if (!fajr || fajr.includes("--")) ensureMosqueAndTimings();
