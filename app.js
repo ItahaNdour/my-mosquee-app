@@ -134,228 +134,10 @@ const RAMADAN_START_DATE = "2026-02-18";
 const RAMADAN_TOTAL_DAYS = 30;
 
 /* =========================
-   Hadith of the Day (offline)
-========================= */
-const HADITHS_FR = [
-  {
-    title: "Intention",
-    text: "Les actions ne valent que par leurs intentions, et chacun n’obtiendra que ce qu’il a eu comme intention.",
-    source: "Bukhari & Muslim (sens)",
-  },
-  {
-    title: "Bienfaisance",
-    text: "Allah est Bon et Il n’accepte que ce qui est bon.",
-    source: "Muslim (sens)",
-  },
-  {
-    title: "Parole",
-    text: "Que celui qui croit en Allah et au Jour dernier dise du bien ou se taise.",
-    source: "Bukhari & Muslim (sens)",
-  },
-  {
-    title: "Facilitation",
-    text: "Facilitez et ne rendez pas les choses difficiles, annoncez la bonne nouvelle et ne repoussez pas.",
-    source: "Bukhari & Muslim (sens)",
-  },
-  {
-    title: "Miséricorde",
-    text: "Ceux qui font miséricorde, le Tout Miséricordieux leur fera miséricorde.",
-    source: "Tirmidhi (sens)",
-  },
-  {
-    title: "Sincérité",
-    text: "La religion est le conseil sincère.",
-    source: "Muslim (sens)",
-  },
-  {
-    title: "Fraternité",
-    text: "Aucun de vous ne croit vraiment tant qu’il n’aime pas pour son frère ce qu’il aime pour lui-même.",
-    source: "Bukhari & Muslim (sens)",
-  },
-  {
-    title: "Pardon",
-    text: "Celui qui pardonne et réconcilie, sa récompense incombe à Allah.",
-    source: "Hadith / sens général",
-  },
-  {
-    title: "Patience",
-    text: "La patience est une lumière.",
-    source: "Muslim (sens)",
-  },
-  {
-    title: "Charité",
-    text: "La charité n’a jamais diminué une richesse.",
-    source: "Muslim (sens)",
-  },
-  {
-    title: "Bon comportement",
-    text: "Le meilleur d’entre vous est celui qui a le meilleur comportement.",
-    source: "Bukhari (sens)",
-  },
-  {
-    title: "Dhikr",
-    text: "Deux paroles légères sur la langue, lourdes dans la balance, aimées d’Allah : SubhanAllah wa bihamdih, SubhanAllahil ‘Azim.",
-    source: "Bukhari & Muslim (sens)",
-  },
-  {
-    title: "Utilité",
-    text: "Allah aime, parmi les gens, ceux qui sont les plus utiles aux autres.",
-    source: "Hadith (sens)",
-  },
-  {
-    title: "Douceur",
-    text: "La douceur n’entre dans une chose qu’elle ne l’embellit, et n’en sort qu’elle ne l’enlaidit.",
-    source: "Muslim (sens)",
-  },
-  {
-    title: "Espoir",
-    text: "Allah dit : Je suis selon l’opinion que Mon serviteur se fait de Moi.",
-    source: "Bukhari & Muslim (sens)",
-  },
-  {
-    title: "Confiance",
-    text: "Si vous vous en remettiez à Allah comme il se doit, Il vous accorderait votre subsistance comme Il la donne à l’oiseau.",
-    source: "Tirmidhi (sens)",
-  },
-  {
-    title: "Prière",
-    text: "Le premier acte dont le serviteur rendra compte au Jour dernier est la prière.",
-    source: "Abu Dawud (sens)",
-  },
-  {
-    title: "Parents",
-    text: "La satisfaction d’Allah est dans la satisfaction des parents.",
-    source: "Tirmidhi (sens)",
-  },
-  {
-    title: "Gratitude",
-    text: "Celui qui ne remercie pas les gens ne remercie pas Allah.",
-    source: "Ahmad / sens",
-  },
-  {
-    title: "Nourriture",
-    text: "Ô jeune homme, dis le nom d’Allah, mange de ta main droite et mange de ce qui est devant toi.",
-    source: "Bukhari & Muslim (sens)",
-  },
-];
-
-function hashStringToIndex(s, mod) {
-  let h = 0;
-  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return mod ? h % mod : h;
-}
-
-function getHadithOfDay() {
-  const key = todayKey();
-  const idx = hashStringToIndex(key, HADITHS_FR.length);
-  return { idx, ...HADITHS_FR[idx] };
-}
-
-function ensureHadithModal() {
-  if (document.getElementById("modal-hadith")) return;
-
-  const modal = document.createElement("div");
-  modal.id = "modal-hadith";
-  modal.className = "modal";
-  modal.setAttribute("role", "dialog");
-  modal.setAttribute("aria-modal", "true");
-  modal.innerHTML = `
-    <div class="box">
-      <span class="close">&times;</span>
-      <h3 id="hadith-title">Hadith du jour</h3>
-      <p id="hadith-text" style="white-space:pre-wrap; font-weight:800"></p>
-      <div class="small" id="hadith-source" style="margin-top:10px"></div>
-      <button id="hadith-share" class="save" style="margin-top:12px;background:var(--green)">
-        <i class="fa-brands fa-whatsapp"></i> Partager
-      </button>
-    </div>
-  `;
-  document.body.appendChild(modal);
-
-  // bind close via existing modal handler
-  modal.querySelector(".close").addEventListener("click", closeAll);
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) closeAll();
-  });
-
-  const shareBtn = document.getElementById("hadith-share");
-  if (shareBtn) {
-    shareBtn.onclick = () => {
-      const t = document.getElementById("hadith-title")?.textContent || "Hadith du jour";
-      const txt = document.getElementById("hadith-text")?.textContent || "";
-      const src = document.getElementById("hadith-source")?.textContent || "";
-      const msg = `📜 *${t}*\n\n${txt}\n\n_${src}_\n\n${location.href}`;
-      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
-    };
-  }
-}
-
-function openHadithModal() {
-  ensureHadithModal();
-  const h = getHadithOfDay();
-  const title = document.getElementById("hadith-title");
-  const text = document.getElementById("hadith-text");
-  const source = document.getElementById("hadith-source");
-
-  if (title) title.textContent = `📜 Hadith du jour • #${h.idx + 1} • ${h.title}`;
-  if (text) text.textContent = h.text;
-  if (source) source.textContent = h.source ? `Source : ${h.source}` : "";
-
-  openModal("modal-hadith");
-}
-
-function setupHadithCard() {
-  const toolsGrid = document.querySelector(".tools-grid");
-  if (!toolsGrid) return;
-  if (document.getElementById("hadith-card")) return;
-
-  const h = getHadithOfDay();
-
-  const card = document.createElement("div");
-  card.id = "hadith-card";
-  card.className = "tool";
-  card.innerHTML = `
-    <div class="tool-title"><i class="fa-solid fa-book-open"></i> Hadith du jour</div>
-    <div class="small" style="margin-top:-4px"><strong>${escapeHtml(h.title)}</strong></div>
-    <div style="margin-top:8px; font-weight:800; line-height:1.35">
-      ${escapeHtml(h.text).slice(0, 140)}${h.text.length > 140 ? "…" : ""}
-    </div>
-    <div style="margin-top:10px; display:flex; gap:8px">
-      <button id="hadith-open" class="btn btn-primary" style="flex:1">Lire</button>
-      <button id="hadith-refresh" class="btn btn-ghost" style="flex:1">Changer</button>
-    </div>
-    <div class="small" style="margin-top:8px">Offline • change chaque jour.</div>
-  `;
-
-  toolsGrid.appendChild(card);
-
-  const openBtn = document.getElementById("hadith-open");
-  if (openBtn) openBtn.onclick = () => openHadithModal();
-
-  const refreshBtn = document.getElementById("hadith-refresh");
-  if (refreshBtn) {
-    refreshBtn.onclick = () => {
-      // Change "du jour" manuellement: on décale l'index (cache local)
-      const k = "hadith_offset";
-      const cur = parseInt(localStorage.getItem(k) || "0", 10) || 0;
-      localStorage.setItem(k, String(cur + 1));
-
-      const base = getHadithOfDay();
-      const idx = (base.idx + cur + 1) % HADITHS_FR.length;
-      const next = { idx, ...HADITHS_FR[idx] };
-
-      card.querySelector("div.small strong").textContent = next.title;
-      card.querySelector("div[style*='font-weight:800']").textContent =
-        next.text.slice(0, 140) + (next.text.length > 140 ? "…" : "");
-
-      showStatus("Hadith changé ✅", "#16a34a");
-    };
-  }
-}
-
-/* =========================
    DOM helpers
 ========================= */
+const el = (id) => document.getElementById(id);
+
 function showStatus(msg, bg) {
   const node = el("status");
   if (!node) return;
@@ -402,6 +184,7 @@ function todayKey() {
   const d = new Date();
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 }
+
 function ymKey() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -433,6 +216,7 @@ function applyTheme(theme) {
   const icon = el("theme-toggle")?.querySelector("i");
   if (icon) icon.className = theme === "dark" ? "fa-solid fa-sun" : "fa-solid fa-moon";
 }
+
 function initTheme() {
   const saved = localStorage.getItem("theme") || "light";
   applyTheme(saved);
@@ -446,7 +230,11 @@ function initTheme() {
    Modals
 ========================= */
 function openModal(id) { el(id).style.display = "block"; }
-function closeAll() { document.querySelectorAll(".modal").forEach((m) => { m.style.display = "none"; }); }
+
+function closeAll() {
+  document.querySelectorAll(".modal").forEach((m) => { m.style.display = "none"; });
+}
+
 function bindModals() {
   document.querySelectorAll(".modal .close").forEach((x) => x.addEventListener("click", closeAll));
   window.addEventListener("click", (e) => {
@@ -460,16 +248,19 @@ function bindModals() {
    Auth (phone -> pseudo email)
 ========================= */
 const PSEUDO_DOMAIN = "mymosque.sn";
+
 function normalizePhone(input) {
   const raw = String(input || "").trim();
   const digits = raw.replace(/\D/g, "");
   if (digits.length >= 9) return digits.slice(-9);
   return digits;
 }
+
 function phoneToEmail(phone9) {
   const p = normalizePhone(phone9);
   return `admin-${p}@${PSEUDO_DOMAIN}`;
 }
+
 async function promptLogin() {
   const phoneOrEmail = prompt("Admin - Téléphone (9 chiffres) ou Email :");
   if (!phoneOrEmail) return null;
@@ -840,7 +631,7 @@ function setupDonButtons() {
 }
 
 /* =========================
-   Tasbih v2.2 (loop)
+   Tasbih (cycle)
 ========================= */
 function setupTasbih() {
   const K_CYCLE = "tasbih_cycle_count";
@@ -1019,25 +810,268 @@ function setupTasbih() {
 }
 
 /* =========================
-   Ramadan
+   Hadith of the Day (offline)
 ========================= */
-function formatFastingDurationShort(fajr, maghrib) {
-  if (!fajr || !maghrib) return "—";
-  const f = parseHM(fajr);
-  const m = parseHM(maghrib);
-  const start = f.h * 60 + f.m;
-  const end = m.h * 60 + m.m;
-  let dur = end - start;
-  if (dur < 0) dur += 24 * 60;
-  const hh = Math.floor(dur / 60);
-  const mm = dur % 60;
-  return `${hh}h ${String(mm).padStart(2, "0")}m`;
+const HADITHS_FR = [
+  { title: "Intention", text: "Les actions ne valent que par leurs intentions, et chacun n’obtiendra que ce qu’il a eu comme intention.", source: "Bukhari & Muslim (sens)" },
+  { title: "Bienfaisance", text: "Allah est Bon et Il n’accepte que ce qui est bon.", source: "Muslim (sens)" },
+  { title: "Parole", text: "Que celui qui croit en Allah et au Jour dernier dise du bien ou se taise.", source: "Bukhari & Muslim (sens)" },
+  { title: "Facilitation", text: "Facilitez et ne rendez pas les choses difficiles, annoncez la bonne nouvelle et ne repoussez pas.", source: "Bukhari & Muslim (sens)" },
+  { title: "Miséricorde", text: "Ceux qui font miséricorde, le Tout Miséricordieux leur fera miséricorde.", source: "Tirmidhi (sens)" },
+  { title: "Sincérité", text: "La religion est le conseil sincère.", source: "Muslim (sens)" },
+  { title: "Fraternité", text: "Aucun de vous ne croit vraiment tant qu’il n’aime pas pour son frère ce qu’il aime pour lui-même.", source: "Bukhari & Muslim (sens)" },
+  { title: "Patience", text: "La patience est une lumière.", source: "Muslim (sens)" },
+  { title: "Charité", text: "La charité n’a jamais diminué une richesse.", source: "Muslim (sens)" },
+  { title: "Douceur", text: "La douceur n’entre dans une chose qu’elle ne l’embellit, et n’en sort qu’elle ne l’enlaidit.", source: "Muslim (sens)" },
+];
+
+function hashStringToIndex(s, mod) {
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return mod ? h % mod : h;
 }
 
+function getHadithOfDay() {
+  const key = todayKey();
+  const baseIdx = hashStringToIndex(key, HADITHS_FR.length);
+  const offset = parseInt(localStorage.getItem("hadith_offset") || "0", 10) || 0;
+  const idx = (baseIdx + offset) % HADITHS_FR.length;
+  return { idx, ...HADITHS_FR[idx] };
+}
+
+function ensureHadithModal() {
+  if (document.getElementById("modal-hadith")) return;
+
+  const modal = document.createElement("div");
+  modal.id = "modal-hadith";
+  modal.className = "modal";
+  modal.setAttribute("role", "dialog");
+  modal.setAttribute("aria-modal", "true");
+  modal.innerHTML = `
+    <div class="box">
+      <span class="close">&times;</span>
+      <h3 id="hadith-title">Hadith du jour</h3>
+      <p id="hadith-text" style="white-space:pre-wrap; font-weight:800"></p>
+      <div class="small" id="hadith-source" style="margin-top:10px"></div>
+      <button id="hadith-share" class="save" style="margin-top:12px;background:var(--green)">
+        <i class="fa-brands fa-whatsapp"></i> Partager
+      </button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelector(".close").addEventListener("click", closeAll);
+  modal.addEventListener("click", (e) => { if (e.target === modal) closeAll(); });
+
+  const shareBtn = document.getElementById("hadith-share");
+  if (shareBtn) {
+    shareBtn.onclick = () => {
+      const t = document.getElementById("hadith-title")?.textContent || "Hadith du jour";
+      const txt = document.getElementById("hadith-text")?.textContent || "";
+      const src = document.getElementById("hadith-source")?.textContent || "";
+      const msg = `📜 *${t}*\n\n${txt}\n\n_${src}_\n\n${location.href}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+    };
+  }
+}
+
+function openHadithModal() {
+  ensureHadithModal();
+  const h = getHadithOfDay();
+  const title = document.getElementById("hadith-title");
+  const text = document.getElementById("hadith-text");
+  const source = document.getElementById("hadith-source");
+
+  if (title) title.textContent = `📜 Hadith du jour • #${h.idx + 1} • ${h.title}`;
+  if (text) text.textContent = h.text;
+  if (source) source.textContent = h.source ? `Source : ${h.source}` : "";
+
+  openModal("modal-hadith");
+}
+
+function setupHadithCard() {
+  const toolsGrid = document.querySelector(".tools-grid");
+  if (!toolsGrid) return;
+  if (document.getElementById("hadith-card")) return;
+
+  const h = getHadithOfDay();
+  const card = document.createElement("div");
+  card.id = "hadith-card";
+  card.className = "tool";
+  card.dataset.toolKey = "hadith";
+  card.dataset.toolLabel = "Hadith";
+
+  card.innerHTML = `
+    <div class="tool-title"><i class="fa-solid fa-book-open"></i> Hadith du jour</div>
+    <div class="small" style="margin-top:-4px"><strong>${escapeHtml(h.title)}</strong></div>
+    <div class="hadith-preview" style="margin-top:8px; font-weight:800; line-height:1.35">
+      ${escapeHtml(h.text).slice(0, 140)}${h.text.length > 140 ? "…" : ""}
+    </div>
+    <div style="margin-top:10px; display:flex; gap:8px">
+      <button id="hadith-open" class="btn btn-primary" style="flex:1">Lire</button>
+      <button id="hadith-next" class="btn btn-ghost" style="flex:1">Changer</button>
+    </div>
+    <div class="small" style="margin-top:8px">Offline • change chaque jour.</div>
+  `;
+
+  toolsGrid.appendChild(card);
+
+  const openBtn = document.getElementById("hadith-open");
+  if (openBtn) openBtn.onclick = () => openHadithModal();
+
+  const nextBtn = document.getElementById("hadith-next");
+  if (nextBtn) {
+    nextBtn.onclick = () => {
+      const k = "hadith_offset";
+      const cur = parseInt(localStorage.getItem(k) || "0", 10) || 0;
+      localStorage.setItem(k, String(cur + 1));
+
+      const next = getHadithOfDay();
+      const titleStrong = card.querySelector(".small strong");
+      const preview = card.querySelector(".hadith-preview");
+      if (titleStrong) titleStrong.textContent = next.title;
+      if (preview) preview.textContent = next.text.slice(0, 140) + (next.text.length > 140 ? "…" : "");
+
+      showStatus("Hadith changé ✅", "#16a34a");
+    };
+  }
+}
+
+/* =========================
+   Tools UI (Muslim Pro style bubbles)
+========================= */
+function injectToolsStylesOnce() {
+  if (document.getElementById("tools-switcher-style")) return;
+
+  const style = document.createElement("style");
+  style.id = "tools-switcher-style";
+  style.textContent = `
+    .tools-switcher{
+      display:flex;
+      gap:8px;
+      overflow:auto;
+      padding:8px 2px 2px;
+      margin-top:6px;
+      scrollbar-width:none;
+    }
+    .tools-switcher::-webkit-scrollbar{display:none}
+    .tool-pill{
+      border:none;
+      cursor:pointer;
+      border-radius:999px;
+      padding:8px 12px;
+      font-weight:900;
+      white-space:nowrap;
+      background:rgba(244,250,248,.9);
+      box-shadow:inset 0 0 0 1px rgba(227,240,235,.95);
+      color:#1f5e53;
+    }
+    body.dark .tool-pill{
+      background:rgba(255,255,255,.06);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);
+      color:var(--ink);
+    }
+    .tool-pill.active{
+      background:var(--green);
+      color:#fff;
+      box-shadow:none;
+    }
+    .tools-stage{
+      margin-top:10px;
+    }
+    .tools-stage .tool{ display:none; }
+    .tools-stage .tool.active-tool{ display:block; }
+  `;
+  document.head.appendChild(style);
+}
+
+function setupToolsSwitcher() {
+  injectToolsStylesOnce();
+
+  const toolsSection = document.querySelector(".card.tools");
+  if (!toolsSection) return;
+
+  const grid = toolsSection.querySelector(".tools-grid");
+  if (!grid) return;
+
+  // mark existing tools
+  const tools = Array.from(grid.querySelectorAll(".tool"));
+  if (!tools.length) return;
+
+  // add metadata for tasbih tool if missing
+  tools.forEach((t) => {
+    if (!t.dataset.toolKey) {
+      const title = t.querySelector(".tool-title")?.textContent?.toLowerCase() || "";
+      if (title.includes("tasbih")) {
+        t.dataset.toolKey = "tasbih";
+        t.dataset.toolLabel = "Tasbih";
+      } else {
+        t.dataset.toolKey = `tool-${Math.random().toString(16).slice(2)}`;
+        t.dataset.toolLabel = "Outil";
+      }
+    }
+  });
+
+  // create switcher only once
+  if (!document.getElementById("tools-switcher")) {
+    const switcher = document.createElement("div");
+    switcher.id = "tools-switcher";
+    switcher.className = "tools-switcher";
+
+    const stage = document.createElement("div");
+    stage.id = "tools-stage";
+    stage.className = "tools-stage";
+
+    // move tools into stage
+    tools.forEach((t) => stage.appendChild(t));
+    grid.innerHTML = "";
+    grid.appendChild(switcher);
+    grid.appendChild(stage);
+
+    // create pills
+    const seen = new Set();
+    Array.from(stage.querySelectorAll(".tool")).forEach((t) => {
+      const key = t.dataset.toolKey;
+      if (seen.has(key)) return;
+      seen.add(key);
+
+      const pill = document.createElement("button");
+      pill.className = "tool-pill";
+      pill.dataset.target = key;
+      pill.textContent = t.dataset.toolLabel || "Outil";
+      switcher.appendChild(pill);
+    });
+  }
+
+  const stage = document.getElementById("tools-stage");
+  const switcher = document.getElementById("tools-switcher");
+  if (!stage || !switcher) return;
+
+  const allTools = Array.from(stage.querySelectorAll(".tool"));
+  const pills = Array.from(switcher.querySelectorAll(".tool-pill"));
+
+  const saved = localStorage.getItem("tools_tab") || "tasbih";
+  const pick = (key) => {
+    localStorage.setItem("tools_tab", key);
+    allTools.forEach((t) => t.classList.toggle("active-tool", t.dataset.toolKey === key));
+    pills.forEach((p) => p.classList.toggle("active", p.dataset.target === key));
+  };
+
+  pills.forEach((p) => {
+    p.onclick = () => pick(p.dataset.target);
+  });
+
+  // fallback: if saved missing, use first
+  const exists = allTools.some((t) => t.dataset.toolKey === saved);
+  pick(exists ? saved : (allTools[0]?.dataset.toolKey || "tasbih"));
+}
+
+/* =========================
+   Ramadan (hidden)
+========================= */
 function renderRamadan() {
   const card = el("ramadan-card");
   if (!card) return;
-
   if (!RAMADAN_ENABLED) {
     card.style.display = "none";
     return;
@@ -1062,7 +1096,7 @@ function renderRamadan() {
   const suhoor = (timingsData && timingsData.Fajr) ? timingsData.Fajr : "--:--";
   el("ramadan-iftar").textContent = iftar;
   el("ramadan-suhoor").textContent = suhoor;
-  el("ramadan-duration").textContent = `Durée du jeûne: ${formatFastingDurationShort(suhoor, iftar)}`;
+  el("ramadan-duration").textContent = `Durée du jeûne: —`;
 
   card.style.display = "block";
 }
@@ -1280,6 +1314,11 @@ function slugifyMosqueId(name) {
     .slice(0, 32);
 }
 
+async function refreshMosquesCacheForSuper() {
+  const snaps = await getDocs(collection(db, "mosques"));
+  mosquesCache = snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
 function ensureAdminUX() {
   const modal = document.getElementById("modal-admin");
   if (!modal) return;
@@ -1297,33 +1336,6 @@ function ensureAdminUX() {
     const title = box.querySelector("h3");
     if (title?.parentNode) title.parentNode.insertBefore(hint, title.nextSibling);
   }
-
-  const makeCollapsible = (h3Text) => {
-    const h3 = Array.from(box.querySelectorAll("h3")).find((x) => x.textContent.trim() === h3Text);
-    if (!h3 || h3.dataset.collapsible === "1") return;
-
-    h3.dataset.collapsible = "1";
-    h3.style.cursor = "pointer";
-    h3.title = "Cliquer pour plier/déplier";
-
-    const nodes = [];
-    let n = h3.nextElementSibling;
-    while (n && n.tagName.toLowerCase() !== "h3") {
-      nodes.push(n);
-      n = n.nextElementSibling;
-    }
-
-    let open = true;
-    const apply = () => nodes.forEach((x) => { x.style.display = open ? "" : "none"; });
-
-    h3.addEventListener("click", () => {
-      open = !open;
-      apply();
-    });
-  };
-
-  makeCollapsible("Collecte (public)");
-  makeCollapsible("Demandes de dons (à valider)");
 }
 
 function wireSuperAddMosqueUX() {
@@ -1353,21 +1365,6 @@ function wireSuperAddMosqueUX() {
   updatePreview();
 }
 
-async function refreshMosquesCacheForSuper() {
-  const snaps = await getDocs(collection(db, "mosques"));
-  mosquesCache = snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
-}
-
-async function refreshSuperMosquesUI(selectMosqueId = null) {
-  await refreshMosquesCacheForSuper();
-  populateAdmMosqueSelect();
-  if (selectMosqueId) {
-    setCurrentMosqueId(selectMosqueId);
-    await attachMosque(selectMosqueId);
-    fillAdminForm(selectMosqueId);
-  }
-}
-
 function buildNewMosquePayload(name) {
   return {
     name: name || "Mosquée",
@@ -1385,6 +1382,36 @@ function buildNewMosquePayload(name) {
     goals: { monthly: 500000 },
     createdAt: serverTimestamp(),
     createdBy: currentUser?.uid || null,
+  };
+}
+
+function populateCitySelect(select) {
+  select.innerHTML = "";
+  Object.keys(CITY_COORDS).forEach((c) => {
+    const o = document.createElement("option");
+    o.value = c;
+    o.textContent = c;
+    select.appendChild(o);
+  });
+}
+
+function populateAdmMosqueSelect() {
+  const sel = el("adm-mosque");
+  if (!sel) return;
+  sel.innerHTML = "";
+  mosquesCache.forEach((m) => {
+    const o = document.createElement("option");
+    o.value = m.id;
+    o.textContent = `${m.name || m.id} (${m.id})`;
+    sel.appendChild(o);
+  });
+  sel.value = activeMosque?.id || resolveMosqueId();
+  sel.onchange = async (e) => {
+    if (!canSelectMosque()) return;
+    const id = e.target.value;
+    setCurrentMosqueId(id);
+    await attachMosque(id);
+    fillAdminForm(id);
   };
 }
 
@@ -1416,7 +1443,12 @@ function wireSuperMosqueCrud() {
       const preview = document.getElementById("adm-new-preview");
       if (preview) preview.textContent = "ID : —";
 
-      await refreshSuperMosquesUI(id);
+      await refreshMosquesCacheForSuper();
+      populateAdmMosqueSelect();
+      setCurrentMosqueId(id);
+      await attachMosque(id);
+      fillAdminForm(id);
+
       showStatus(`Mosquée ajoutée: ${name} (${id})`, "#16a34a");
     } catch (e) {
       console.error(e);
@@ -1440,8 +1472,14 @@ function wireSuperMosqueCrud() {
 
       await deleteDoc(mosqueDocRef(id));
 
+      await refreshMosquesCacheForSuper();
       const next = mosquesCache.find((x) => x.id !== id)?.id || DEFAULT_MOSQUES[0].id;
-      await refreshSuperMosquesUI(next);
+
+      populateAdmMosqueSelect();
+      setCurrentMosqueId(next);
+      await attachMosque(next);
+      fillAdminForm(next);
+
       showStatus(`Mosquée supprimée: ${m.name}`, "#ef4444");
     } catch (e) {
       console.error(e);
@@ -1482,36 +1520,6 @@ function ensureLogoutButton() {
   const saveBtn = document.getElementById("save");
   if (saveBtn?.parentNode) saveBtn.parentNode.insertBefore(btn, saveBtn.nextSibling);
   else box.appendChild(btn);
-}
-
-function populateCitySelect(select) {
-  select.innerHTML = "";
-  Object.keys(CITY_COORDS).forEach((c) => {
-    const o = document.createElement("option");
-    o.value = c;
-    o.textContent = c;
-    select.appendChild(o);
-  });
-}
-
-function populateAdmMosqueSelect() {
-  const sel = el("adm-mosque");
-  if (!sel) return;
-  sel.innerHTML = "";
-  mosquesCache.forEach((m) => {
-    const o = document.createElement("option");
-    o.value = m.id;
-    o.textContent = `${m.name || m.id} (${m.id})`;
-    sel.appendChild(o);
-  });
-  sel.value = activeMosque?.id || resolveMosqueId();
-  sel.onchange = async (e) => {
-    if (!canSelectMosque()) return;
-    const id = e.target.value;
-    setCurrentMosqueId(id);
-    await attachMosque(id);
-    fillAdminForm(id);
-  };
 }
 
 function fillAdminForm(id) {
@@ -1628,8 +1636,9 @@ function setup() {
   setupAdmin();
   setupTasbih();
 
-  // ✅ Hadith card (offline)
+  // Hadith + switcher
   setupHadithCard();
+  setupToolsSwitcher();
 
   updateClock();
   setInterval(updateClock, 1000);
@@ -1640,7 +1649,7 @@ function setup() {
 }
 
 /* =========================
-   SAFE BOOT (if something fails)
+   SAFE BOOT
 ========================= */
 function ensureMosqueAndTimings() {
   try {
@@ -1651,12 +1660,8 @@ function ensureMosqueAndTimings() {
   }
 }
 
-window.addEventListener("error", (e) => {
-  console.error("JS error:", e?.message || e);
-});
-window.addEventListener("unhandledrejection", (e) => {
-  console.error("Unhandled promise:", e?.reason || e);
-});
+window.addEventListener("error", (e) => console.error("JS error:", e?.message || e));
+window.addEventListener("unhandledrejection", (e) => console.error("Unhandled promise:", e?.reason || e));
 
 /* =========================
    Boot
