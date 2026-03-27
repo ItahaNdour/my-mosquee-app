@@ -134,10 +134,228 @@ const RAMADAN_START_DATE = "2026-02-18";
 const RAMADAN_TOTAL_DAYS = 30;
 
 /* =========================
+   Hadith of the Day (offline)
+========================= */
+const HADITHS_FR = [
+  {
+    title: "Intention",
+    text: "Les actions ne valent que par leurs intentions, et chacun n’obtiendra que ce qu’il a eu comme intention.",
+    source: "Bukhari & Muslim (sens)",
+  },
+  {
+    title: "Bienfaisance",
+    text: "Allah est Bon et Il n’accepte que ce qui est bon.",
+    source: "Muslim (sens)",
+  },
+  {
+    title: "Parole",
+    text: "Que celui qui croit en Allah et au Jour dernier dise du bien ou se taise.",
+    source: "Bukhari & Muslim (sens)",
+  },
+  {
+    title: "Facilitation",
+    text: "Facilitez et ne rendez pas les choses difficiles, annoncez la bonne nouvelle et ne repoussez pas.",
+    source: "Bukhari & Muslim (sens)",
+  },
+  {
+    title: "Miséricorde",
+    text: "Ceux qui font miséricorde, le Tout Miséricordieux leur fera miséricorde.",
+    source: "Tirmidhi (sens)",
+  },
+  {
+    title: "Sincérité",
+    text: "La religion est le conseil sincère.",
+    source: "Muslim (sens)",
+  },
+  {
+    title: "Fraternité",
+    text: "Aucun de vous ne croit vraiment tant qu’il n’aime pas pour son frère ce qu’il aime pour lui-même.",
+    source: "Bukhari & Muslim (sens)",
+  },
+  {
+    title: "Pardon",
+    text: "Celui qui pardonne et réconcilie, sa récompense incombe à Allah.",
+    source: "Hadith / sens général",
+  },
+  {
+    title: "Patience",
+    text: "La patience est une lumière.",
+    source: "Muslim (sens)",
+  },
+  {
+    title: "Charité",
+    text: "La charité n’a jamais diminué une richesse.",
+    source: "Muslim (sens)",
+  },
+  {
+    title: "Bon comportement",
+    text: "Le meilleur d’entre vous est celui qui a le meilleur comportement.",
+    source: "Bukhari (sens)",
+  },
+  {
+    title: "Dhikr",
+    text: "Deux paroles légères sur la langue, lourdes dans la balance, aimées d’Allah : SubhanAllah wa bihamdih, SubhanAllahil ‘Azim.",
+    source: "Bukhari & Muslim (sens)",
+  },
+  {
+    title: "Utilité",
+    text: "Allah aime, parmi les gens, ceux qui sont les plus utiles aux autres.",
+    source: "Hadith (sens)",
+  },
+  {
+    title: "Douceur",
+    text: "La douceur n’entre dans une chose qu’elle ne l’embellit, et n’en sort qu’elle ne l’enlaidit.",
+    source: "Muslim (sens)",
+  },
+  {
+    title: "Espoir",
+    text: "Allah dit : Je suis selon l’opinion que Mon serviteur se fait de Moi.",
+    source: "Bukhari & Muslim (sens)",
+  },
+  {
+    title: "Confiance",
+    text: "Si vous vous en remettiez à Allah comme il se doit, Il vous accorderait votre subsistance comme Il la donne à l’oiseau.",
+    source: "Tirmidhi (sens)",
+  },
+  {
+    title: "Prière",
+    text: "Le premier acte dont le serviteur rendra compte au Jour dernier est la prière.",
+    source: "Abu Dawud (sens)",
+  },
+  {
+    title: "Parents",
+    text: "La satisfaction d’Allah est dans la satisfaction des parents.",
+    source: "Tirmidhi (sens)",
+  },
+  {
+    title: "Gratitude",
+    text: "Celui qui ne remercie pas les gens ne remercie pas Allah.",
+    source: "Ahmad / sens",
+  },
+  {
+    title: "Nourriture",
+    text: "Ô jeune homme, dis le nom d’Allah, mange de ta main droite et mange de ce qui est devant toi.",
+    source: "Bukhari & Muslim (sens)",
+  },
+];
+
+function hashStringToIndex(s, mod) {
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return mod ? h % mod : h;
+}
+
+function getHadithOfDay() {
+  const key = todayKey();
+  const idx = hashStringToIndex(key, HADITHS_FR.length);
+  return { idx, ...HADITHS_FR[idx] };
+}
+
+function ensureHadithModal() {
+  if (document.getElementById("modal-hadith")) return;
+
+  const modal = document.createElement("div");
+  modal.id = "modal-hadith";
+  modal.className = "modal";
+  modal.setAttribute("role", "dialog");
+  modal.setAttribute("aria-modal", "true");
+  modal.innerHTML = `
+    <div class="box">
+      <span class="close">&times;</span>
+      <h3 id="hadith-title">Hadith du jour</h3>
+      <p id="hadith-text" style="white-space:pre-wrap; font-weight:800"></p>
+      <div class="small" id="hadith-source" style="margin-top:10px"></div>
+      <button id="hadith-share" class="save" style="margin-top:12px;background:var(--green)">
+        <i class="fa-brands fa-whatsapp"></i> Partager
+      </button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  // bind close via existing modal handler
+  modal.querySelector(".close").addEventListener("click", closeAll);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeAll();
+  });
+
+  const shareBtn = document.getElementById("hadith-share");
+  if (shareBtn) {
+    shareBtn.onclick = () => {
+      const t = document.getElementById("hadith-title")?.textContent || "Hadith du jour";
+      const txt = document.getElementById("hadith-text")?.textContent || "";
+      const src = document.getElementById("hadith-source")?.textContent || "";
+      const msg = `📜 *${t}*\n\n${txt}\n\n_${src}_\n\n${location.href}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+    };
+  }
+}
+
+function openHadithModal() {
+  ensureHadithModal();
+  const h = getHadithOfDay();
+  const title = document.getElementById("hadith-title");
+  const text = document.getElementById("hadith-text");
+  const source = document.getElementById("hadith-source");
+
+  if (title) title.textContent = `📜 Hadith du jour • #${h.idx + 1} • ${h.title}`;
+  if (text) text.textContent = h.text;
+  if (source) source.textContent = h.source ? `Source : ${h.source}` : "";
+
+  openModal("modal-hadith");
+}
+
+function setupHadithCard() {
+  const toolsGrid = document.querySelector(".tools-grid");
+  if (!toolsGrid) return;
+  if (document.getElementById("hadith-card")) return;
+
+  const h = getHadithOfDay();
+
+  const card = document.createElement("div");
+  card.id = "hadith-card";
+  card.className = "tool";
+  card.innerHTML = `
+    <div class="tool-title"><i class="fa-solid fa-book-open"></i> Hadith du jour</div>
+    <div class="small" style="margin-top:-4px"><strong>${escapeHtml(h.title)}</strong></div>
+    <div style="margin-top:8px; font-weight:800; line-height:1.35">
+      ${escapeHtml(h.text).slice(0, 140)}${h.text.length > 140 ? "…" : ""}
+    </div>
+    <div style="margin-top:10px; display:flex; gap:8px">
+      <button id="hadith-open" class="btn btn-primary" style="flex:1">Lire</button>
+      <button id="hadith-refresh" class="btn btn-ghost" style="flex:1">Changer</button>
+    </div>
+    <div class="small" style="margin-top:8px">Offline • change chaque jour.</div>
+  `;
+
+  toolsGrid.appendChild(card);
+
+  const openBtn = document.getElementById("hadith-open");
+  if (openBtn) openBtn.onclick = () => openHadithModal();
+
+  const refreshBtn = document.getElementById("hadith-refresh");
+  if (refreshBtn) {
+    refreshBtn.onclick = () => {
+      // Change "du jour" manuellement: on décale l'index (cache local)
+      const k = "hadith_offset";
+      const cur = parseInt(localStorage.getItem(k) || "0", 10) || 0;
+      localStorage.setItem(k, String(cur + 1));
+
+      const base = getHadithOfDay();
+      const idx = (base.idx + cur + 1) % HADITHS_FR.length;
+      const next = { idx, ...HADITHS_FR[idx] };
+
+      card.querySelector("div.small strong").textContent = next.title;
+      card.querySelector("div[style*='font-weight:800']").textContent =
+        next.text.slice(0, 140) + (next.text.length > 140 ? "…" : "");
+
+      showStatus("Hadith changé ✅", "#16a34a");
+    };
+  }
+}
+
+/* =========================
    DOM helpers
 ========================= */
-const el = (id) => document.getElementById(id);
-
 function showStatus(msg, bg) {
   const node = el("status");
   if (!node) return;
@@ -622,7 +840,7 @@ function setupDonButtons() {
 }
 
 /* =========================
-   Tasbih v2.2 (FIX LOOP)
+   Tasbih v2.2 (loop)
 ========================= */
 function setupTasbih() {
   const K_CYCLE = "tasbih_cycle_count";
@@ -637,14 +855,12 @@ function setupTasbih() {
   const reset = el("tasbih-reset");
   if (!countEl || !plus || !reset) return;
 
-  // migrate old key if exists (from previous versions)
   const old = localStorage.getItem("tasbih_count");
   if (old != null && localStorage.getItem(K_TOTAL) == null) {
     localStorage.setItem(K_TOTAL, String(parseInt(old, 10) || 0));
     localStorage.removeItem("tasbih_count");
   }
 
-  // daily rollover
   const dayKey = todayKey();
   const storedDayKey = localStorage.getItem(K_DAY_KEY);
   if (storedDayKey !== dayKey) {
@@ -656,16 +872,6 @@ function setupTasbih() {
     const g = parseInt(localStorage.getItem(K_GOAL) || "33", 10);
     return [33, 99, 100].includes(g) ? g : 33;
   };
-  const setGoal = (v) => {
-    const g = parseInt(v, 10);
-    localStorage.setItem(K_GOAL, String([33, 99, 100].includes(g) ? g : 33));
-    // ensure cycle within new goal
-    const goal = getGoal();
-    const cycle = getCycle();
-    if (cycle >= goal) setCycle(0);
-    renderTasbihMeta();
-  };
-
   const getCycle = () => parseInt(localStorage.getItem(K_CYCLE) || "0", 10) || 0;
   const setCycle = (v) => {
     const nv = Math.max(0, parseInt(v, 10) || 0);
@@ -685,6 +891,14 @@ function setupTasbih() {
   const vibrate = () => {
     if (!getVibe()) return;
     if (navigator.vibrate) navigator.vibrate(30);
+  };
+
+  const setGoal = (v) => {
+    const g = parseInt(v, 10);
+    localStorage.setItem(K_GOAL, String([33, 99, 100].includes(g) ? g : 33));
+    const goal = getGoal();
+    if (getCycle() >= goal) setCycle(0);
+    renderTasbihMeta();
   };
 
   const toolBox = countEl.closest(".tool");
@@ -758,7 +972,6 @@ function setupTasbih() {
     if (vibeChk) vibeChk.checked = getVibe();
   }
 
-  // init
   if (localStorage.getItem(K_CYCLE) == null) setCycle(0);
   if (localStorage.getItem(K_TOTAL) == null) setTotal(0);
   if (localStorage.getItem(K_DAY) == null) setDay(0);
@@ -768,17 +981,16 @@ function setupTasbih() {
 
   plus.onclick = () => {
     const goal = getGoal();
-    const cycle = getCycle() + 1;
+    const nextCycle = getCycle() + 1;
 
     setTotal(getTotal() + 1);
     setDay(getDay() + 1);
 
-    if (cycle >= goal) {
-      // ✅ boucle
+    if (nextCycle >= goal) {
       setCycle(0);
       showStatus(`Objectif ${goal} atteint ✅`, "#16a34a");
     } else {
-      setCycle(cycle);
+      setCycle(nextCycle);
     }
 
     renderTasbihMeta();
@@ -790,7 +1002,6 @@ function setupTasbih() {
     if (cycle <= 0) return;
 
     setCycle(cycle - 1);
-    // on ne touche pas au total global, mais on ajuste aujourd'hui
     setDay(Math.max(0, getDay() - 1));
 
     renderTasbihMeta();
@@ -1416,6 +1627,9 @@ function setup() {
   setupDonButtonsAndHelp();
   setupAdmin();
   setupTasbih();
+
+  // ✅ Hadith card (offline)
+  setupHadithCard();
 
   updateClock();
   setInterval(updateClock, 1000);
