@@ -1400,7 +1400,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const profile = await loadUserProfile(user.uid);
     if (!profile) {
       await signOut(auth);
-      alert("Compte non autorisé (doc users/{uid} manquant ou invalide).");
+      alert("Compte non autorisé (doc users/{uid} manquant ou invalide)."); 
       return;
     }
 
