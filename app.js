@@ -622,53 +622,65 @@ function setupDonButtons() {
 }
 
 /* =========================
-   Tasbih v2 (NEW)
+   Tasbih v2.2 (FIX LOOP)
 ========================= */
 function setupTasbih() {
-  const rootCountId = "tasbih_count";
-  const rootDayId = "tasbih_count_day";
-  const rootGoalId = "tasbih_goal";
-  const rootVibeId = "tasbih_vibe";
-  const rootDayKeyId = "tasbih_day_key";
+  const K_CYCLE = "tasbih_cycle_count";
+  const K_TOTAL = "tasbih_total_count";
+  const K_DAY = "tasbih_day_count";
+  const K_GOAL = "tasbih_goal";
+  const K_VIBE = "tasbih_vibe";
+  const K_DAY_KEY = "tasbih_day_key";
 
   const countEl = el("tasbih-count");
   const plus = el("tasbih-plus");
   const reset = el("tasbih-reset");
   if (!countEl || !plus || !reset) return;
 
-  const dayKey = todayKey();
-  const storedDayKey = localStorage.getItem(rootDayKeyId);
-  if (storedDayKey !== dayKey) {
-    localStorage.setItem(rootDayKeyId, dayKey);
-    localStorage.setItem(rootDayId, "0");
+  // migrate old key if exists (from previous versions)
+  const old = localStorage.getItem("tasbih_count");
+  if (old != null && localStorage.getItem(K_TOTAL) == null) {
+    localStorage.setItem(K_TOTAL, String(parseInt(old, 10) || 0));
+    localStorage.removeItem("tasbih_count");
   }
 
-  const getCount = () => parseInt(localStorage.getItem(rootCountId) || "0", 10) || 0;
-  const setCount = (v) => {
-    const nv = Math.max(0, parseInt(v, 10) || 0);
-    localStorage.setItem(rootCountId, String(nv));
-    countEl.textContent = String(nv);
-    renderTasbihMeta();
-  };
-
-  const getDay = () => parseInt(localStorage.getItem(rootDayId) || "0", 10) || 0;
-  const incDay = (delta) => {
-    const nv = Math.max(0, getDay() + delta);
-    localStorage.setItem(rootDayId, String(nv));
-  };
+  // daily rollover
+  const dayKey = todayKey();
+  const storedDayKey = localStorage.getItem(K_DAY_KEY);
+  if (storedDayKey !== dayKey) {
+    localStorage.setItem(K_DAY_KEY, dayKey);
+    localStorage.setItem(K_DAY, "0");
+  }
 
   const getGoal = () => {
-    const g = parseInt(localStorage.getItem(rootGoalId) || "33", 10);
+    const g = parseInt(localStorage.getItem(K_GOAL) || "33", 10);
     return [33, 99, 100].includes(g) ? g : 33;
   };
   const setGoal = (v) => {
     const g = parseInt(v, 10);
-    localStorage.setItem(rootGoalId, String([33, 99, 100].includes(g) ? g : 33));
+    localStorage.setItem(K_GOAL, String([33, 99, 100].includes(g) ? g : 33));
+    // ensure cycle within new goal
+    const goal = getGoal();
+    const cycle = getCycle();
+    if (cycle >= goal) setCycle(0);
     renderTasbihMeta();
   };
 
-  const getVibe = () => localStorage.getItem(rootVibeId) !== "0";
-  const setVibe = (on) => localStorage.setItem(rootVibeId, on ? "1" : "0");
+  const getCycle = () => parseInt(localStorage.getItem(K_CYCLE) || "0", 10) || 0;
+  const setCycle = (v) => {
+    const nv = Math.max(0, parseInt(v, 10) || 0);
+    localStorage.setItem(K_CYCLE, String(nv));
+    countEl.textContent = String(nv);
+  };
+
+  const getTotal = () => parseInt(localStorage.getItem(K_TOTAL) || "0", 10) || 0;
+  const setTotal = (v) => localStorage.setItem(K_TOTAL, String(Math.max(0, parseInt(v, 10) || 0)));
+
+  const getDay = () => parseInt(localStorage.getItem(K_DAY) || "0", 10) || 0;
+  const setDay = (v) => localStorage.setItem(K_DAY, String(Math.max(0, parseInt(v, 10) || 0)));
+
+  const getVibe = () => localStorage.getItem(K_VIBE) !== "0";
+  const setVibe = (on) => localStorage.setItem(K_VIBE, on ? "1" : "0");
 
   const vibrate = () => {
     if (!getVibe()) return;
@@ -709,7 +721,7 @@ function setupTasbih() {
         </label>
       </div>
 
-      <div id="tasbih-progress" style="height:8px;border-radius:999px;overflow:hidden;background:rgba(232,244,241,.95)">
+      <div style="height:8px;border-radius:999px;overflow:hidden;background:rgba(232,244,241,.95)">
         <span id="tasbih-progress-bar" style="display:block;height:100%;width:0%;background:#16a34a"></span>
       </div>
 
@@ -728,11 +740,11 @@ function setupTasbih() {
 
   function renderTasbihMeta() {
     const goal = getGoal();
-    const count = getCount();
+    const cycle = getCycle();
     const today = getDay();
 
-    const withinGoal = count % goal;
-    const left = withinGoal === 0 ? goal : Math.max(0, goal - withinGoal);
+    const left = Math.max(0, goal - cycle);
+    const pct = Math.min(100, Math.round((cycle * 100) / goal));
 
     const todayEl = document.getElementById("tasbih-today");
     const leftEl = document.getElementById("tasbih-left");
@@ -740,33 +752,54 @@ function setupTasbih() {
 
     if (todayEl) todayEl.textContent = String(today);
     if (leftEl) leftEl.textContent = String(left);
-
-    const pct = Math.min(100, Math.round((withinGoal * 100) / goal));
     if (bar) bar.style.width = `${pct}%`;
 
     if (goalSel) goalSel.value = String(goal);
     if (vibeChk) vibeChk.checked = getVibe();
   }
 
-  setCount(getCount());
+  // init
+  if (localStorage.getItem(K_CYCLE) == null) setCycle(0);
+  if (localStorage.getItem(K_TOTAL) == null) setTotal(0);
+  if (localStorage.getItem(K_DAY) == null) setDay(0);
+
+  setCycle(getCycle());
   renderTasbihMeta();
 
   plus.onclick = () => {
-    setCount(getCount() + 1);
-    incDay(1);
+    const goal = getGoal();
+    const cycle = getCycle() + 1;
+
+    setTotal(getTotal() + 1);
+    setDay(getDay() + 1);
+
+    if (cycle >= goal) {
+      // ✅ boucle
+      setCycle(0);
+      showStatus(`Objectif ${goal} atteint ✅`, "#16a34a");
+    } else {
+      setCycle(cycle);
+    }
+
+    renderTasbihMeta();
     vibrate();
   };
 
   minusBtn.onclick = () => {
-    if (getCount() <= 0) return;
-    setCount(getCount() - 1);
-    incDay(-1);
+    const cycle = getCycle();
+    if (cycle <= 0) return;
+
+    setCycle(cycle - 1);
+    // on ne touche pas au total global, mais on ajuste aujourd'hui
+    setDay(Math.max(0, getDay() - 1));
+
+    renderTasbihMeta();
     vibrate();
   };
 
   reset.onclick = () => {
-    setCount(0);
-    localStorage.setItem(rootDayId, "0");
+    setCycle(0);
+    setDay(0);
     renderTasbihMeta();
   };
 
