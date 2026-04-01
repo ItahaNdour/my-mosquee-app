@@ -22,8 +22,11 @@ import {
   serverTimestamp,
   runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import * as adhan from "https://cdn.jsdelivr.net/npm/adhan@4.4.3/lib/bundles/adhan.esm.js";
 
-/* Firebase */
+/* =========================
+   Firebase
+========================= */
 const firebaseConfig = {
   apiKey: "AIzaSyCUOJaDJUo37WeFh61DAFHFN3ON6evAAsQ",
   authDomain: "mymosquee-web.firebaseapp.com",
@@ -38,9 +41,12 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* State */
-let SESSION_ROLE = "guest";
-let currentUser = null;
+/* =========================
+   Session / State
+========================= */
+let SESSION_ROLE = "guest"; // guest | admin | super
+let currentUser = null; // { uid, role, mosqueId }
+
 let mosquesCache = [];
 let activeMosque = null;
 
@@ -52,7 +58,9 @@ let latestDonations = [];
 
 let _pageViewLogged = false;
 
-/* Constants */
+/* =========================
+   Constants
+========================= */
 const PRAYER_NAMES = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
 const DISPLAY = {
   Fajr: { local: "Souba", ar: "Fajr" },
@@ -107,7 +115,9 @@ const DON_CATEGORY_HELP = {
 
 const RAMADAN_ENABLED = false;
 
-/* DOM helpers */
+/* =========================
+   DOM utils
+========================= */
 const el = (id) => document.getElementById(id);
 
 function showStatus(msg, bg) {
@@ -137,11 +147,6 @@ function escapeHtml(s) {
 function parseHM(s) {
   const [h, m] = String(s || "").split(":").map((x) => parseInt(x, 10));
   return { h: Number.isFinite(h) ? h : 0, m: Number.isFinite(m) ? m : 0 };
-}
-
-function buildTuneParam(offsets) {
-  const a = offsets && offsets.length === 6 ? offsets : [0, 0, 0, 0, 0, 0];
-  return a.join(",");
 }
 
 function ddmmyy(iso) {
@@ -175,10 +180,15 @@ function resolveMosqueId() {
   return localStorage.getItem("currentMosqueId") || DEFAULT_MOSQUES[0].id;
 }
 
-function setCurrentMosqueId(id) { localStorage.setItem("currentMosqueId", id); }
+function setCurrentMosqueId(id) {
+  localStorage.setItem("currentMosqueId", id);
+}
 
-/* ============ Tracking ============ */
+/* =========================
+   Tracking events
+========================= */
 const SESSION_ID_KEY = "mm_session_id_v1";
+
 function getSessionId() {
   let sid = localStorage.getItem(SESSION_ID_KEY);
   if (!sid) {
@@ -215,7 +225,9 @@ async function logEvent(type, meta = {}) {
   } catch {}
 }
 
-/* ============ Theme ============ */
+/* =========================
+   Theme
+========================= */
 function applyTheme(theme) {
   document.body.classList.toggle("dark", theme === "dark");
   localStorage.setItem("theme", theme);
@@ -232,7 +244,9 @@ function initTheme() {
   };
 }
 
-/* ============ Modals ============ */
+/* =========================
+   Modals
+========================= */
 function openModal(id) { el(id).style.display = "block"; }
 function closeAll() { document.querySelectorAll(".modal").forEach((m) => { m.style.display = "none"; }); }
 
@@ -245,18 +259,23 @@ function bindModals() {
   if (ok) ok.onclick = () => closeAll();
 }
 
-/* ============ Auth ============ */
+/* =========================
+   Auth (phone -> pseudo email)
+========================= */
 const PSEUDO_DOMAIN = "mymosque.sn";
+
 function normalizePhone(input) {
   const raw = String(input || "").trim();
   const digits = raw.replace(/\D/g, "");
   if (digits.length >= 9) return digits.slice(-9);
   return digits;
 }
+
 function phoneToEmail(phone9) {
   const p = normalizePhone(phone9);
   return `admin-${p}@${PSEUDO_DOMAIN}`;
 }
+
 async function promptLogin() {
   const phoneOrEmail = prompt("Admin - Téléphone (9 chiffres) ou Email :");
   if (!phoneOrEmail) return null;
@@ -266,12 +285,16 @@ async function promptLogin() {
   return signInWithEmailAndPassword(auth, email, pin);
 }
 
-/* ============ Firestore refs ============ */
+/* =========================
+   Firestore refs
+========================= */
 function usersDocRef(uid) { return doc(db, "users", uid); }
 function mosqueDocRef(mosqueId) { return doc(db, "mosques", mosqueId); }
 function donationsColRef(mosqueId) { return collection(db, "mosques", mosqueId, "donations"); }
 
-/* ============ Roles ============ */
+/* =========================
+   Roles
+========================= */
 async function loadUserProfile(uid) {
   const snap = await getDoc(usersDocRef(uid));
   if (!snap.exists()) return null;
@@ -288,6 +311,9 @@ async function refreshMosquesCacheForSuper() {
   mosquesCache = snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+/* =========================
+   Mosque selector UI
+========================= */
 function canSelectMosque() {
   const forced = !!getUrlMosqueId();
   return currentUser?.role === "super" && !forced;
@@ -332,7 +358,9 @@ function populateMosqueSelector() {
   };
 }
 
-/* ============ Header compact (CSS inject) ============ */
+/* =========================
+   Compact header CSS
+========================= */
 function injectCompactHeaderCss() {
   if (document.getElementById("mm-compact-css")) return;
   const style = document.createElement("style");
@@ -350,10 +378,12 @@ function injectCompactHeaderCss() {
   document.head.appendChild(style);
 }
 
-/* ============ GPS AUTO + "méthode par région" ============ */
-const GEO_ENABLED_KEY = "mm_geo_enabled_v3";
-const GEO_LAST_KEY = "mm_geo_last_v3";
-const GEO_LAST_FETCH_KEY = "mm_geo_last_fetch_v3";
+/* =========================
+   GPS AUTO (no button)
+========================= */
+const GEO_ENABLED_KEY = "mm_geo_enabled_v5";
+const GEO_LAST_KEY = "mm_geo_last_v5";
+const GEO_LAST_FETCH_KEY = "mm_geo_last_fetch_v5";
 const GEO_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const GEO_FETCH_DEBOUNCE_MS = 30 * 60 * 1000;
 const GEO_DEFAULT_ON = true;
@@ -381,10 +411,6 @@ function loadLastCoords() {
 }
 function saveLastCoords(lat, lon) {
   localStorage.setItem(GEO_LAST_KEY, JSON.stringify({ lat, lon, ts: Date.now() }));
-}
-function getCoordsRoundedKey(lat, lon) {
-  const r = (x) => Math.round(x * 100) / 100;
-  return `${r(lat)}_${r(lon)}`;
 }
 function shouldRefetchGeoNow() {
   const last = parseInt(localStorage.getItem(GEO_LAST_FETCH_KEY) || "0", 10) || 0;
@@ -460,27 +486,16 @@ function injectGeoToggleUI() {
     toggle.checked = isGeoEnabled();
     toggle.onchange = async () => {
       setGeoEnabled(!!toggle.checked);
+      logEvent("geo_toggle", { on: !!toggle.checked });
       if (toggle.checked) await ensureAutoGeoWarmup();
       await fetchTimings();
     };
   }
 }
 
-/**
- * Mapping simple "méthode par région" (sans reverse geocode)
- * - France: UOIF (12)
- * - Sénégal: MWL (3)
- * - par défaut: MWL (3) (global)
- */
-function getAutoMethodByCoords(lat, lon) {
-  // France métropolitaine approx
-  if (lat >= 41.0 && lat <= 51.6 && lon >= -5.5 && lon <= 9.8) return 12; // UOIF
-  // Sénégal approx
-  if (lat >= 12.0 && lat <= 16.8 && lon >= -17.8 && lon <= -11.3) return 3; // MWL
-  return 3;
-}
-
-/* ============ Clock / countdown ============ */
+/* =========================
+   Clock / countdown
+========================= */
 function updateClock() {
   const n = new Date();
   el("current-time").textContent = [n.getHours(), n.getMinutes(), n.getSeconds()].map((v) => String(v).padStart(2, "0")).join(":");
@@ -545,63 +560,98 @@ function updateNextCountdown() {
   if (item) item.classList.add("current");
 }
 
-/* ============ Timings API ============ */
-function mockData() {
-  return { timings: MOCK, date: { hijri: { day: "—", month: { ar: "—" }, year: "—" } } };
+/* =========================
+   Timings: local calculation (adhan-js)
+========================= */
+function pad2(n) { return String(n).padStart(2, "0"); }
+
+function formatHHMM(dateObj) {
+  if (!dateObj || !(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return "--:--";
+  return `${pad2(dateObj.getHours())}:${pad2(dateObj.getMinutes())}`;
+}
+
+function getAsrMadhabFromMosque() {
+  return activeMosque?.school === 1 ? adhan.Madhab.Hanafi : adhan.Madhab.Shafi;
+}
+
+/**
+ * No country mapping:
+ * - default MWL
+ * - for high latitudes we switch to MoonsightingCommittee + recommended high-lat rule
+ */
+function getCalcParamsAuto(coords) {
+  const lat = coords.latitude;
+  const params =
+    lat >= 45
+      ? adhan.CalculationMethod.MoonsightingCommittee()
+      : adhan.CalculationMethod.MuslimWorldLeague();
+
+  params.madhab = getAsrMadhabFromMosque();
+  params.highLatitudeRule = adhan.HighLatitudeRule.recommended(coords);
+
+  const off = Array.isArray(activeMosque?.offsets) && activeMosque.offsets.length === 6
+    ? activeMosque.offsets
+    : [0, 0, 0, 0, 0, 0];
+
+  params.adjustments.fajr = Number(off[0] || 0);
+  params.adjustments.sunrise = Number(off[1] || 0);
+  params.adjustments.dhuhr = Number(off[2] || 0);
+  params.adjustments.asr = Number(off[3] || 0);
+  params.adjustments.maghrib = Number(off[4] || 0);
+  params.adjustments.isha = Number(off[5] || 0);
+
+  return params;
 }
 
 async function fetchTimings() {
   if (!activeMosque) return;
 
-  let coords = null;
+  let base = null;
   if (isGeoEnabled()) {
-    coords = loadLastCoords();
-    if (!coords && shouldRefetchGeoNow()) {
+    base = loadLastCoords();
+    if (!base && shouldRefetchGeoNow()) {
       localStorage.setItem(GEO_LAST_FETCH_KEY, String(Date.now()));
-      coords = await getUserCoordsOnce({ timeoutMs: 7000 });
+      base = await getUserCoordsOnce({ timeoutMs: 7000 });
     }
   }
 
-  const base = coords || (CITY_COORDS[activeMosque.city] || CITY_COORDS.Medina);
+  if (!base) base = CITY_COORDS[activeMosque.city] || CITY_COORDS.Medina;
 
-  // ✅ Méthode: GPS => auto par région ; sinon mosquée.method (config)
-  const method = coords ? getAutoMethodByCoords(base.lat, base.lon) : ((activeMosque.method != null) ? activeMosque.method : 3);
-  const school = (activeMosque.school != null) ? activeMosque.school : 0;
-  const tune = buildTuneParam(activeMosque.offsets || [0, 0, 0, 0, 0, 0]);
+  const coords = new adhan.Coordinates(base.lat, base.lon);
+  const params = getCalcParamsAuto(coords);
+  const date = new Date();
+  const pt = new adhan.PrayerTimes(coords, date, params);
 
-  const url = `https://api.aladhan.com/v1/timings?latitude=${base.lat}&longitude=${base.lon}&method=${method}&school=${school}&tune=${tune}`;
+  const timings = {
+    Fajr: formatHHMM(pt.fajr),
+    Sunrise: formatHHMM(pt.sunrise),
+    Dhuhr: formatHHMM(pt.dhuhr),
+    Asr: formatHHMM(pt.asr),
+    Maghrib: formatHHMM(pt.maghrib),
+    Isha: formatHHMM(pt.isha),
+  };
 
-  const coordKey = getCoordsRoundedKey(base.lat, base.lon);
-  const key = `cache_${activeMosque.id}_${new Date().toDateString()}_${coordKey}_m${method}_s${school}_t${tune}`;
-  const cached = localStorage.getItem(key);
-  let loaded = false;
-
-  if (cached) { displayAll(JSON.parse(cached)); loaded = true; }
-
-  try {
-    const r = await fetch(url);
-    const j = await r.json();
-    if (j && j.data) {
-      localStorage.setItem(key, JSON.stringify(j.data));
-      displayAll(j.data);
-    } else throw new Error("bad");
-  } catch {
-    showStatus(loaded ? "Hors-ligne – cache." : "Données par défaut affichées.", loaded ? "#ca8a04" : "#e11d48");
-    if (!loaded) displayAll(mockData());
-  }
+  displayAll({
+    timings,
+    date: { hijri: { day: "—", month: { ar: "—" }, year: "—" } },
+  });
 }
 
-/* ============ Donations ============ */
+/* =========================
+   Donations
+========================= */
 function normalizeCategory(cat) {
   const c = String(cat || "").trim();
   if (c === "Travaux / Entretien") return "Travaux";
   return DON_CATEGORIES.includes(c) ? c : "Sadaqa";
 }
+
 function getPublicCategory() {
   const sel = el("don-public-category");
   if (!sel) return "Sadaqa";
   return normalizeCategory(sel.value);
 }
+
 function updatePublicCategoryHelp() {
   const cat = getPublicCategory();
   const help = el("don-public-category-help");
@@ -788,7 +838,9 @@ BarakAllahou fik.`);
   el("don-confirm").onclick = () => submitDonationRequest().catch((e) => alert(e?.message || "Erreur"));
 }
 
-/* ============ Tasbih (sans vibration) ============ */
+/* =========================
+   Tasbih (no vibration)
+========================= */
 function setupTasbih() {
   const K_CYCLE = "tasbih_cycle_count";
   const K_DAY = "tasbih_day_count";
@@ -909,7 +961,9 @@ function setupTasbih() {
   if (goalSel) goalSel.onchange = () => setGoal(goalSel.value);
 }
 
-/* ============ Tools bubbles (minimal stable) ============ */
+/* =========================
+   Tools bubbles (Hadith/Du'a/Dhikr)
+========================= */
 const HADITHS = [
   { titleFr: "Patience", ar: "الصَّبْرُ ضِيَاءٌ", phon: "As-sabr ḍiyā’", fr: "La patience est une lumière." },
   { titleFr: "Parole", ar: "فَلْيَقُلْ خَيْرًا أَوْ لِيَصْمُتْ", phon: "Fal-yaqul khayran aw liyasmut", fr: "Dis du bien ou tais-toi." },
@@ -1008,12 +1062,15 @@ function openDaily(kind) {
   };
   const cfg = map[kind];
   if (!cfg) return;
+
   const item = pickDaily(cfg.list, cfg.key);
 
   document.getElementById("mm-daily-title").textContent = `${cfg.emoji} ${cfg.label} du jour • ${item.titleFr}`;
   document.getElementById("mm-daily-ar").textContent = item.ar || "";
   document.getElementById("mm-daily-phon").textContent = item.phon ? `Phonétique : ${item.phon}` : "";
   document.getElementById("mm-daily-fr").textContent = item.fr || "";
+
+  logEvent("tools_read", { tool: kind });
   openModal("modal-daily");
 }
 
@@ -1023,6 +1080,7 @@ function addToolCard(id, toolKey, toolLabel, iconHtml, list, offsetKey) {
   if (document.getElementById(id)) return;
 
   const item = pickDaily(list, offsetKey);
+
   const card = document.createElement("div");
   card.id = id;
   card.className = "tool";
@@ -1070,7 +1128,7 @@ function setupToolsBubbles() {
   if (!grid) return;
 
   addToolCard("mm-hadith-card", "hadith", "Hadith", '<i class="fa-solid fa-book-open"></i>', HADITHS, "hadith_offset");
-  addToolCard("mm-dua-card", "dua", "Du'a", '<i class="fa-solid fa-hands-praying"></i>', DUAS, "dua_offset");
+  addToolCard("mm-dua-card", "dua", "Du\'a", '<i class="fa-solid fa-hands-praying"></i>', DUAS, "dua_offset");
   addToolCard("mm-dhikr-card", "dhikr", "Dhikr", '<i class="fa-solid fa-circle-dot"></i>', DHIKR, "dhikr_offset");
 
   if (!document.getElementById("mm-pill-row")) {
@@ -1123,7 +1181,9 @@ function setupToolsBubbles() {
   pick(exists ? saved : (tools[0]?.dataset.toolKey || "hadith"));
 }
 
-/* ============ 99 Names ============ */
+/* =========================
+   99 Names (complete)
+========================= */
 const NAMES_99 = [
   { ar: "ٱللَّٰه", fr: "Allah" },
   { ar: "ٱلرَّحْمَٰن", fr: "Ar-Rahman (Le Tout Miséricordieux)" },
@@ -1231,8 +1291,10 @@ function renderNames99() {
   const list = el("names-list");
   const header = el("names-header");
   if (!list || !header) return;
+
   header.textContent = "Les 99 Noms d'Allah";
   list.innerHTML = "";
+
   NAMES_99.forEach((n, idx) => {
     const li = document.createElement("li");
     li.innerHTML = `<span><strong>${idx + 1}.</strong> ${escapeHtml(n.fr)}</span><span style="font-weight:900">${escapeHtml(n.ar)}</span>`;
@@ -1240,25 +1302,9 @@ function renderNames99() {
   });
 }
 
-/* Footer */
-function setupFooter() {
-  el("events-btn").onclick = () => { renderEvents(); openModal("modal-events"); };
-  el("announce-btn").onclick = () => {
-    openModal("modal-ann");
-    if (!activeMosque) return;
-    localStorage.setItem(`annSeen_${activeMosque.id}_${todayKey()}`, "1");
-    el("notif").style.display = "none";
-  };
-  el("about-btn").onclick = () => openModal("modal-about");
-  el("names-btn").onclick = () => { renderNames99(); openModal("modal-names"); };
-  el("share-btn").onclick = () => {
-    if (!activeMosque) return;
-    const text = `🕌 ${activeMosque.name}\n${el("gregorian-date").textContent}\n\nFajr: ${el("fajr-time").textContent}\nDhuhr: ${el("dhuhr-time").textContent}\nAsr: ${el("asr-time").textContent}\nMaghrib: ${el("maghrib-time").textContent}\nIsha: ${el("isha-time").textContent}\n\n${location.href}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-  };
-}
-
-/* Events modal */
+/* =========================
+   Footer + Events
+========================= */
 function renderEvents() {
   const m = activeMosque;
   const box = el("events-list");
@@ -1284,13 +1330,45 @@ function renderEvents() {
   box.appendChild(wrap);
 }
 
-/* Display */
+function setupFooter() {
+  el("events-btn").onclick = () => { renderEvents(); openModal("modal-events"); logEvent("open_events"); };
+
+  el("announce-btn").onclick = () => {
+    openModal("modal-ann");
+    if (!activeMosque) return;
+    localStorage.setItem(`annSeen_${activeMosque.id}_${todayKey()}`, "1");
+    el("notif").style.display = "none";
+    logEvent("open_announcements");
+  };
+
+  el("about-btn").onclick = () => { openModal("modal-about"); logEvent("open_about"); };
+
+  el("names-btn").onclick = () => {
+    renderNames99();
+    openModal("modal-names");
+    logEvent("open_names99");
+  };
+
+  el("share-btn").onclick = () => {
+    if (!activeMosque) return;
+    const text = `🕌 ${activeMosque.name}\n${el("gregorian-date").textContent}\n\nFajr: ${el("fajr-time").textContent}\nDhuhr: ${el("dhuhr-time").textContent}\nAsr: ${el("asr-time").textContent}\nMaghrib: ${el("maghrib-time").textContent}\nIsha: ${el("isha-time").textContent}\n\n${location.href}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+    logEvent("share_whatsapp");
+  };
+}
+
+/* =========================
+   Ramadan (hidden)
+========================= */
 function renderRamadan() {
   const card = el("ramadan-card");
   if (!card) return;
   card.style.display = RAMADAN_ENABLED ? "block" : "none";
 }
 
+/* =========================
+   Display
+========================= */
 function displayAll(data) {
   timingsData = (data && data.timings) ? data.timings : MOCK;
   const m = activeMosque || DEFAULT_MOSQUES[0];
@@ -1332,55 +1410,9 @@ function displayAll(data) {
   populateMosqueSelector();
 }
 
-/* Attach mosque */
-async function attachMosque(mosqueId) {
-  if (unsubMosque) { unsubMosque(); unsubMosque = null; }
-  if (unsubDonations) { unsubDonations(); unsubDonations = null; }
-  latestDonations = [];
-
-  const ref = mosqueDocRef(mosqueId);
-  const snap = await getDoc(ref);
-
-  if (!snap.exists()) {
-    activeMosque = DEFAULT_MOSQUES.find((m) => m.id === mosqueId) || DEFAULT_MOSQUES[0];
-    setCurrentMosqueId(activeMosque.id);
-    refreshMosqueAccessUI();
-    populateMosqueSelector();
-    await ensureAutoGeoWarmup();
-    fetchTimings();
-    return;
-  }
-
-  activeMosque = { id: snap.id, ...snap.data() };
-  setCurrentMosqueId(activeMosque.id);
-
-  unsubMosque = onSnapshot(ref, async (s) => {
-    if (!s.exists()) return;
-    activeMosque = { id: s.id, ...s.data() };
-    refreshMosqueAccessUI();
-    populateMosqueSelector();
-    await ensureAutoGeoWarmup();
-    fetchTimings();
-    renderDonPublic();
-  });
-
-  if (SESSION_ROLE !== "guest") {
-    const q = query(donationsColRef(mosqueId), orderBy("createdAt", "desc"), limit(200));
-    unsubDonations = onSnapshot(q, (qs) => {
-      latestDonations = qs.docs.map((d) => ({ id: d.id, ...d.data() }));
-      renderReqTable();
-      updateAdminBadge();
-      renderDonPublic();
-    });
-  }
-
-  refreshMosqueAccessUI();
-  populateMosqueSelector();
-  await ensureAutoGeoWarmup();
-  fetchTimings();
-}
-
-/* Admin (simple + logout) */
+/* =========================
+   Admin (panel + logout + save mosque)
+========================= */
 function ensureLogoutButton() {
   const modal = document.getElementById("modal-admin");
   if (!modal) return;
@@ -1407,36 +1439,137 @@ function ensureLogoutButton() {
   else box.appendChild(btn);
 }
 
+function parseEventsTextarea() {
+  const t = el("adm-events");
+  if (!t) return [];
+  return t.value
+    .split("\n")
+    .filter((l) => l.trim() !== "")
+    .map((l) => {
+      const [title, ...rest] = l.split("|");
+      return { title: (title || "").trim(), date: (rest.join("|") || "").trim() };
+    });
+}
+
+function mosqueToPayloadFromAdminForm() {
+  return {
+    name: el("adm-name")?.value?.trim() || "Mosquée",
+    city: el("adm-city")?.value || "Medina",
+    wave: el("adm-wave")?.value?.trim() || "",
+    orange: el("adm-orange")?.value?.trim() || "",
+    contact: el("adm-contact")?.value?.trim() || "",
+    phone: el("adm-phone")?.value?.trim() || "",
+    jumua: el("adm-jumua")?.value || "13:30",
+    ann: el("adm-ann")?.value || "",
+    events: parseEventsTextarea(),
+    goals: { monthly: Math.max(0, parseInt(el("adm-goal")?.value || "0", 10) || 0) },
+  };
+}
+
+function fillAdminForm() {
+  const m = activeMosque;
+  if (!m) return;
+  el("adm-name").value = m.name || "";
+  el("adm-city").value = m.city || "Medina";
+  el("adm-wave").value = m.wave || "";
+  el("adm-orange").value = m.orange || "";
+  el("adm-contact").value = m.contact || "";
+  el("adm-phone").value = m.phone || "";
+  el("adm-jumua").value = m.jumua || "13:30";
+  el("adm-ann").value = m.ann || "";
+  el("adm-events").value = (m.events || []).map((e) => `${e.title} | ${e.date}`).join("\n");
+  el("adm-goal").value = getMonthlyGoal(m);
+  renderReqTable();
+}
+
 function setupAdmin() {
-  el("admin-button").onclick = async () => {
+  const adminBtn = el("admin-button");
+  const saveBtn = el("save");
+  if (!adminBtn || !saveBtn) return;
+
+  adminBtn.onclick = async () => {
     ensureLogoutButton();
     if (!auth.currentUser) {
       await promptLogin();
       return;
     }
+    fillAdminForm();
     openModal("modal-admin");
     logEvent("admin_open_panel");
   };
 
-  const saveBtn = el("save");
-  if (saveBtn) {
-    saveBtn.onclick = async () => {
-      if (!activeMosque) return;
-      if (SESSION_ROLE === "guest") return;
-      await setDoc(mosqueDocRef(activeMosque.id), { ...activeMosque }, { merge: true });
-      closeAll();
-      showStatus("Enregistré.");
-    };
-  }
+  saveBtn.onclick = async () => {
+    if (!activeMosque) return;
+    if (SESSION_ROLE === "guest") return;
+
+    const payload = mosqueToPayloadFromAdminForm();
+    await setDoc(mosqueDocRef(activeMosque.id), payload, { merge: true });
+    closeAll();
+    showStatus("Enregistré.");
+    logEvent("mosque_saved", { mosqueId: activeMosque.id });
+  };
 }
 
-/* Setup */
+/* =========================
+   Attach mosque + subscriptions
+========================= */
+async function attachMosque(mosqueId) {
+  if (unsubMosque) { unsubMosque(); unsubMosque = null; }
+  if (unsubDonations) { unsubDonations(); unsubDonations = null; }
+  latestDonations = [];
+
+  const ref = mosqueDocRef(mosqueId);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) {
+    activeMosque = DEFAULT_MOSQUES.find((m) => m.id === mosqueId) || DEFAULT_MOSQUES[0];
+    setCurrentMosqueId(activeMosque.id);
+    refreshMosqueAccessUI();
+    populateMosqueSelector();
+    await ensureAutoGeoWarmup();
+    await fetchTimings();
+    return;
+  }
+
+  activeMosque = { id: snap.id, ...snap.data() };
+  setCurrentMosqueId(activeMosque.id);
+
+  unsubMosque = onSnapshot(ref, async (s) => {
+    if (!s.exists()) return;
+    activeMosque = { id: s.id, ...s.data() };
+    refreshMosqueAccessUI();
+    populateMosqueSelector();
+    await ensureAutoGeoWarmup();
+    await fetchTimings();
+    renderDonPublic();
+  });
+
+  if (SESSION_ROLE !== "guest") {
+    const q = query(donationsColRef(mosqueId), orderBy("createdAt", "desc"), limit(200));
+    unsubDonations = onSnapshot(q, (qs) => {
+      latestDonations = qs.docs.map((d) => ({ id: d.id, ...d.data() }));
+      renderReqTable();
+      updateAdminBadge();
+      renderDonPublic();
+    });
+  }
+
+  refreshMosqueAccessUI();
+  populateMosqueSelector();
+  await ensureAutoGeoWarmup();
+  await fetchTimings();
+}
+
+/* =========================
+   Setup
+========================= */
 function setup() {
   bindModals();
   initTheme();
-  injectCompactHeaderCss();
 
+  injectCompactHeaderCss();
   injectGeoToggleUI();
+
   setupFooter();
   setupDonButtons();
   setupAdmin();
@@ -1453,7 +1586,6 @@ function setup() {
   renderRamadan();
 }
 
-/* Boot */
 document.addEventListener("DOMContentLoaded", () => {
   setup();
 
