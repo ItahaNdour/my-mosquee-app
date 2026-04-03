@@ -24,9 +24,9 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 /* =========================
-   Build / Version (helps cache)
+   Build / Version
 ========================= */
-const BUILD = "7000";
+const BUILD = "7001";
 
 /* =========================
    Firebase
@@ -262,7 +262,7 @@ async function refreshMosquesCacheForSuper() {
 }
 
 /* =========================
-   Mosque selector UI (no weird duplicate)
+   Mosque selector UI
 ========================= */
 function canSelectMosque() {
   const forced = !!getUrlMosqueId();
@@ -311,7 +311,7 @@ function populateMosqueSelector() {
 }
 
 /* =========================
-   GPS AUTO (no refresh button)
+   GPS AUTO
 ========================= */
 const GEO_ENABLED_KEY = "mm_geo_enabled_v6";
 const GEO_LAST_KEY = "mm_geo_last_v6";
@@ -509,7 +509,7 @@ function updateNextCountdown() {
 }
 
 /* =========================
-   Timings via AlAdhan API (stable)
+   Timings via AlAdhan API
 ========================= */
 function buildTuneParam(offsets) {
   const a = offsets && offsets.length === 6 ? offsets : [0, 0, 0, 0, 0, 0];
@@ -550,10 +550,8 @@ async function fetchTimings() {
   const cached = localStorage.getItem(key);
 
   if (cached) {
-    const data = JSON.parse(cached);
-    displayAll(data);
+    displayAll(JSON.parse(cached));
   } else {
-    // show something immediately
     displayAll({ timings: MOCK, date: { hijri: { day: "—", month: { ar: "—" }, year: "—" } } });
   }
 
@@ -753,21 +751,127 @@ BarakAllahou fik.`);
 }
 
 /* =========================
-   Tasbih (simple, stable)
+   Tasbih (FULL: goal + progress + today)
+   (no vibration)
 ========================= */
 function setupTasbih() {
-  const k = "tasbih_count";
+  const K_CYCLE = "tasbih_cycle_count";
+  const K_DAY = "tasbih_day_count";
+  const K_GOAL = "tasbih_goal";
+  const K_DAY_KEY = "tasbih_day_key";
+
   const countEl = el("tasbih-count");
   const plus = el("tasbih-plus");
   const reset = el("tasbih-reset");
   if (!countEl || !plus || !reset) return;
 
-  const get = () => parseInt(localStorage.getItem(k) || "0", 10) || 0;
-  const set = (v) => { localStorage.setItem(k, String(v)); countEl.textContent = String(v); };
+  const toolBox = countEl.closest(".tool");
+  if (toolBox) {
+    toolBox.dataset.toolKey = "tasbih";
+    toolBox.dataset.toolLabel = "Tasbih";
+  }
 
-  set(get());
-  plus.onclick = () => set(get() + 1);
-  reset.onclick = () => set(0);
+  const dayKey = todayKey();
+  const storedDayKey = localStorage.getItem(K_DAY_KEY);
+  if (storedDayKey !== dayKey) {
+    localStorage.setItem(K_DAY_KEY, dayKey);
+    localStorage.setItem(K_DAY, "0");
+  }
+
+  const getGoal = () => {
+    const g = parseInt(localStorage.getItem(K_GOAL) || "33", 10);
+    return [33, 99, 100].includes(g) ? g : 33;
+  };
+  const setGoal = (v) => {
+    const g = parseInt(v, 10);
+    localStorage.setItem(K_GOAL, String([33, 99, 100].includes(g) ? g : 33));
+    if (getCycle() >= getGoal()) setCycle(0);
+    renderMeta();
+  };
+
+  const getCycle = () => parseInt(localStorage.getItem(K_CYCLE) || "0", 10) || 0;
+  const setCycle = (v) => {
+    const nv = Math.max(0, parseInt(v, 10) || 0);
+    localStorage.setItem(K_CYCLE, String(nv));
+    countEl.textContent = String(nv);
+  };
+
+  const getDay = () => parseInt(localStorage.getItem(K_DAY) || "0", 10) || 0;
+  const setDay = (v) => localStorage.setItem(K_DAY, String(Math.max(0, parseInt(v, 10) || 0)));
+
+  // inject UI once
+  if (!document.getElementById("tasbih-meta")) {
+    const meta = document.createElement("div");
+    meta.id = "tasbih-meta";
+    meta.className = "small";
+    meta.style.display = "grid";
+    meta.style.gap = "6px";
+    meta.style.marginTop = "8px";
+    meta.innerHTML = `
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <span style="font-weight:900">Objectif</span>
+        <select id="tasbih-goal" style="padding:6px 10px;border-radius:10px;border:1px solid rgba(229,231,235,.7);font-weight:900;background:var(--card);color:var(--ink)">
+          <option value="33">33</option>
+          <option value="99">99</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+
+      <div style="height:8px;border-radius:999px;overflow:hidden;background:rgba(232,244,241,.95)">
+        <span id="tasbih-progress" style="display:block;height:100%;width:0%;background:#16a34a"></span>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;gap:10px">
+        <span>Aujourd’hui : <strong id="tasbih-today">0</strong></span>
+        <span>Reste : <strong id="tasbih-left">0</strong></span>
+      </div>
+    `;
+    toolBox?.querySelector(".tasbih")?.appendChild(meta);
+  }
+
+  const goalSel = document.getElementById("tasbih-goal");
+
+  function renderMeta() {
+    const goal = getGoal();
+    const cycle = getCycle();
+    const today = getDay();
+    const left = Math.max(0, goal - cycle);
+    const pct = goal ? Math.min(100, Math.round((cycle * 100) / goal)) : 0;
+
+    const todayEl = document.getElementById("tasbih-today");
+    const leftEl = document.getElementById("tasbih-left");
+    const bar = document.getElementById("tasbih-progress");
+
+    if (todayEl) todayEl.textContent = String(today);
+    if (leftEl) leftEl.textContent = String(left);
+    if (bar) bar.style.width = `${pct}%`;
+    if (goalSel) goalSel.value = String(goal);
+  }
+
+  setCycle(getCycle());
+  renderMeta();
+
+  plus.onclick = () => {
+    const goal = getGoal();
+    const next = getCycle() + 1;
+    setDay(getDay() + 1);
+
+    if (next >= goal) {
+      setCycle(0);
+      showStatus(`Objectif ${goal} atteint ✅`, "#16a34a");
+    } else {
+      setCycle(next);
+    }
+    renderMeta();
+  };
+
+  reset.onclick = () => {
+    setCycle(0);
+    setDay(0);
+    renderMeta();
+  };
+
+  if (goalSel) goalSel.onchange = () => setGoal(goalSel.value);
 }
 
 /* =========================
@@ -824,9 +928,81 @@ function pickDaily(list, offsetKey) {
   return list[(base + off) % list.length];
 }
 
-function addToolCard(id, toolKey, toolLabel, iconHtml, list, offsetKey) {
+/* modal for reading/sharing */
+function ensureDailyModal() {
+  if (document.getElementById("modal-daily")) return;
+
+  const modal = document.createElement("div");
+  modal.id = "modal-daily";
+  modal.className = "modal";
+  modal.setAttribute("role", "dialog");
+  modal.setAttribute("aria-modal", "true");
+  modal.innerHTML = `
+    <div class="box">
+      <span class="close">&times;</span>
+      <h3 id="mm-daily-title">—</h3>
+      <div id="mm-daily-ar" style="margin-top:10px;font-weight:800;font-size:16px;line-height:1.5;direction:rtl;text-align:right"></div>
+      <div id="mm-daily-phon" style="margin-top:8px;font-weight:700;font-size:13px;line-height:1.35;color:var(--muted)"></div>
+      <div id="mm-daily-fr" style="margin-top:10px;font-weight:700;font-size:14px;line-height:1.5"></div>
+      <button id="mm-daily-share" class="save" style="margin-top:12px;background:var(--green)">
+        <i class="fa-brands fa-whatsapp"></i> Partager
+      </button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelector(".close").addEventListener("click", closeAll);
+  modal.addEventListener("click", (e) => { if (e.target === modal) closeAll(); });
+
+  document.getElementById("mm-daily-share").onclick = () => {
+    const t = document.getElementById("mm-daily-title")?.textContent || "";
+    const ar = document.getElementById("mm-daily-ar")?.textContent || "";
+    const phon = document.getElementById("mm-daily-phon")?.textContent || "";
+    const fr = document.getElementById("mm-daily-fr")?.textContent || "";
+    const msg = `🕌 ${t}\n\n${ar}\n${phon}\n\n${fr}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+  };
+}
+
+function openDaily(kind) {
+  ensureDailyModal();
+
+  const map = {
+    hadith: { label: "Hadith", list: HADITHS, key: "hadith_offset", emoji: "📜" },
+    dua: { label: "Du'a", list: DUAS, key: "dua_offset", emoji: "🤲" },
+    dhikr: { label: "Dhikr", list: DHIKR, key: "dhikr_offset", emoji: "🧿" },
+  };
+  const cfg = map[kind];
+  if (!cfg) return;
+
+  const item = pickDaily(cfg.list, cfg.key);
+
+  document.getElementById("mm-daily-title").textContent = `${cfg.emoji} ${cfg.label} • ${item.titleFr}`;
+  document.getElementById("mm-daily-ar").textContent = item.ar || "";
+  document.getElementById("mm-daily-phon").textContent = item.phon ? `Phonétique : ${item.phon}` : "";
+  document.getElementById("mm-daily-fr").textContent = item.fr || "";
+
+  openModal("modal-daily");
+}
+
+function shareQuick(kind) {
+  const map = {
+    hadith: { label: "Hadith", list: HADITHS, key: "hadith_offset", emoji: "📜" },
+    dua: { label: "Du'a", list: DUAS, key: "dua_offset", emoji: "🤲" },
+    dhikr: { label: "Dhikr", list: DHIKR, key: "dhikr_offset", emoji: "🧿" },
+  };
+  const cfg = map[kind];
+  if (!cfg) return;
+  const item = pickDaily(cfg.list, cfg.key);
+  const msg = `🕌 ${cfg.emoji} ${cfg.label} • ${item.titleFr}\n\n${item.ar}\n${item.phon ? item.phon + "\n\n" : "\n"}${item.fr}`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+}
+
+function addToolCard(toolKey, toolLabel, iconHtml, list, offsetKey) {
   const toolsGrid = document.querySelector(".tools-grid");
   if (!toolsGrid) return;
+
+  const id = `mm-${toolKey}-card`;
   if (document.getElementById(id)) return;
 
   const item = pickDaily(list, offsetKey);
@@ -842,12 +1018,18 @@ function addToolCard(id, toolKey, toolLabel, iconHtml, list, offsetKey) {
     <div class="mm-fr">${escapeHtml(item.fr)}</div>
     <div class="mm-phon">${item.phon ? escapeHtml(item.phon) : ""}</div>
     <div class="mm-ar">${escapeHtml(item.ar)}</div>
-    <div style="margin-top:10px; display:flex; gap:8px">
-      <button class="btn btn-primary" data-change="1" style="flex:1">Changer</button>
+
+    <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+      <button class="btn btn-primary" data-read="1" style="flex:1; min-width:110px">Lire</button>
+      <button class="btn btn-ghost" data-share="1" style="flex:1; min-width:110px">Partager</button>
+      <button class="btn btn-primary" data-change="1" style="flex:1; min-width:110px">Changer</button>
     </div>
   `;
 
   toolsGrid.appendChild(card);
+
+  card.querySelector('[data-read="1"]').onclick = () => openDaily(toolKey);
+  card.querySelector('[data-share="1"]').onclick = () => shareQuick(toolKey);
 
   card.querySelector('[data-change="1"]').onclick = () => {
     const cur = parseInt(localStorage.getItem(offsetKey) || "0", 10) || 0;
@@ -871,12 +1053,22 @@ function setupToolsBubbles() {
   const grid = toolsSection.querySelector(".tools-grid");
   if (!grid) return;
 
-  addToolCard("mm-hadith-card", "hadith", "Hadith", '<i class="fa-solid fa-book-open"></i>', HADITHS, "hadith_offset");
-  addToolCard("mm-dua-card", "dua", "Du\'a", '<i class="fa-solid fa-hands-praying"></i>', DUAS, "dua_offset");
-  addToolCard("mm-dhikr-card", "dhikr", "Dhikr", '<i class="fa-solid fa-circle-dot"></i>', DHIKR, "dhikr_offset");
+  // Ensure tasbih tool has dataset and stays
+  const tasbihTool = grid.querySelector("#tasbih-count")?.closest(".tool");
+  if (tasbihTool) {
+    tasbihTool.dataset.toolKey = "tasbih";
+    tasbihTool.dataset.toolLabel = "Tasbih";
+  }
 
+  // Add other cards (do not remove tasbih)
+  addToolCard("hadith", "Hadith", '<i class="fa-solid fa-book-open"></i>', HADITHS, "hadith_offset");
+  addToolCard("dua", "Du\'a", '<i class="fa-solid fa-hands-praying"></i>', DUAS, "dua_offset");
+  addToolCard("dhikr", "Dhikr", '<i class="fa-solid fa-circle-dot"></i>', DHIKR, "dhikr_offset");
+
+  // Wrap into pills+stage once
   if (!document.getElementById("mm-pill-row")) {
     const tools = Array.from(grid.querySelectorAll(".tool"));
+
     const pillRow = document.createElement("div");
     pillRow.id = "mm-pill-row";
     pillRow.className = "mm-pill-row";
@@ -885,37 +1077,25 @@ function setupToolsBubbles() {
     stage.id = "mm-tools-stage";
     stage.className = "mm-tools-stage";
 
+    // Move all tools into stage
     tools.forEach((t) => stage.appendChild(t));
+
+    // Replace grid content
     grid.innerHTML = "";
     grid.appendChild(pillRow);
     grid.appendChild(stage);
 
-    const seen = new Set();
-    Array.from(stage.querySelectorAll(".tool")).forEach((t) => {
-      const key = t.dataset.toolKey;
-      if (!key || seen.has(key)) return;
-      seen.add(key);
-
+    // Pills (ordered: tasbih first)
+    const order = ["tasbih", "hadith", "dua", "dhikr"];
+    order.forEach((key) => {
+      const t = Array.from(stage.querySelectorAll(".tool")).find((x) => x.dataset.toolKey === key);
+      if (!t) return;
       const pill = document.createElement("button");
       pill.className = "mm-pill";
       pill.dataset.target = key;
       pill.textContent = t.dataset.toolLabel || key;
       pillRow.appendChild(pill);
     });
-
-    // tasbih pill (existing card remains as first tool in DOM)
-    const tasbihTool = toolsSection.querySelector('.tool .tasbih')?.closest('.tool');
-    if (tasbihTool) {
-      tasbihTool.dataset.toolKey = "tasbih";
-      tasbihTool.dataset.toolLabel = "Tasbih";
-      stage.insertBefore(tasbihTool, stage.firstChild);
-
-      const pill = document.createElement("button");
-      pill.className = "mm-pill";
-      pill.dataset.target = "tasbih";
-      pill.textContent = "Tasbih";
-      pillRow.insertBefore(pill, pillRow.firstChild);
-    }
   }
 
   const stage = document.getElementById("mm-tools-stage");
@@ -935,7 +1115,7 @@ function setupToolsBubbles() {
   pills.forEach((p) => { p.onclick = () => pick(p.dataset.target); });
 
   const exists = tools.some((t) => t.dataset.toolKey === saved);
-  pick(exists ? saved : (tools[0]?.dataset.toolKey || "tasbih"));
+  pick(exists ? saved : "tasbih");
 }
 
 /* =========================
@@ -995,7 +1175,7 @@ function renderEvents() {
 
 function setupFooter() {
   el("events-btn").onclick = () => { renderEvents(); openModal("modal-events"); };
-  el("announce-btn").onclick = () => { openModal("modal-ann"); };
+  el("announce-btn").onclick = () => openModal("modal-ann");
   el("about-btn").onclick = () => openModal("modal-about");
   el("names-btn").onclick = () => { renderNames99(); openModal("modal-names"); };
 
@@ -1119,11 +1299,9 @@ function displayAll(data) {
   timingsData = (data && data.timings) ? data.timings : MOCK;
   const m = activeMosque || DEFAULT_MOSQUES[0];
 
-  // title
   const title = el("mosque-name");
   if (title && !canSelectMosque()) title.textContent = m.name || "Mosquée";
 
-  // donate info
   el("wave-number").textContent = m.wave || "—";
   el("orange-number").textContent = m.orange || "—";
   el("cash-info").textContent = m.name || "Mosquée";
@@ -1203,7 +1381,7 @@ async function attachMosque(mosqueId) {
 }
 
 /* =========================
-   Setup
+   Small build badge (debug cache)
 ========================= */
 function injectBuildBadge() {
   if (document.getElementById("mm-build")) return;
@@ -1220,6 +1398,9 @@ function injectBuildBadge() {
   document.body.appendChild(badge);
 }
 
+/* =========================
+   Setup
+========================= */
 function setup() {
   bindModals();
   initTheme();
