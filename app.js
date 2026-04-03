@@ -588,7 +588,7 @@ function updateNextCountdown() {
   });
 
   if (now.getDay() === 5 && activeMosque?.jumua) {
-    const hm = parseHM(activeMosque.jumua || "13:30");
+    const hm = parseHM(activeMosque.jumua || "13:30"); 
     const d = new Date();
     d.setHours(hm.h, hm.m, 0, 0);
     p.Dhuhr = d;
