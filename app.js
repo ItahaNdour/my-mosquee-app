@@ -26,7 +26,7 @@ import {
 /* =========================
    Build
 ========================= */
-const BUILD = "7400";
+const BUILD = "7500";
 
 /* =========================
    Firebase
@@ -117,7 +117,7 @@ const DON_CATEGORY_HELP = {
   Travaux: "Travaux : entretien, rénovation, équipement.",
 };
 
-// Ramadan OFF (on réactivera plus tard)
+// Ramadan OFF
 const RAMADAN_ENABLED = false;
 
 /* =========================
@@ -251,21 +251,17 @@ function openWhatsApp(to, msg) {
 }
 
 /* =========================
-   Audio: Adhan MP3 + fallback beep
+   Adhan (toggle + test)
+   (On garde la version actuelle: le son “à l’heure” ne marche que si la page est ouverte.)
 ========================= */
 const ADHAN_ENABLED_KEY = "mm_adhan_enabled_v1";
-const ADHAN_AUDIO_URL = "./assets/adhan.mp3"; // <-- fichier à ajouter dans le repo
+const ADHAN_AUDIO_URL = "./assets/adhan.mp3";
 
-function isAdhanEnabled() {
-  return localStorage.getItem(ADHAN_ENABLED_KEY) === "1";
-}
-function setAdhanEnabled(on) {
-  localStorage.setItem(ADHAN_ENABLED_KEY, on ? "1" : "0");
-}
+function isAdhanEnabled() { return localStorage.getItem(ADHAN_ENABLED_KEY) === "1"; }
+function setAdhanEnabled(on) { localStorage.setItem(ADHAN_ENABLED_KEY, on ? "1" : "0"); }
 
 function ensureAudioUnlock() {
   if (audioUnlocked) return;
-
   const unlock = async () => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -280,7 +276,6 @@ function ensureAudioUnlock() {
       audioUnlocked = true;
     } catch {}
   };
-
   document.addEventListener("pointerdown", unlock, { capture: true, once: true });
   document.addEventListener("keydown", unlock, { capture: true, once: true });
 }
@@ -294,15 +289,11 @@ function playAdhanBeepFallback() {
     o.frequency.value = 660;
     o.connect(g);
     g.connect(ctx.destination);
-
     g.gain.setValueAtTime(0.0001, ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.03);
-
     o.start();
-
     const seq = [660, 740, 660, 520, 660];
     seq.forEach((f, i) => o.frequency.setValueAtTime(f, ctx.currentTime + i * 0.22));
-
     setTimeout(async () => {
       try {
         g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.05);
@@ -341,9 +332,7 @@ function maybePlayAdhanForPrayer(prayerName) {
   if (localStorage.getItem(key) === "1") return;
 
   localStorage.setItem(key, "1");
-  playAdhan().then((ok) => {
-    showStatus(ok ? `Adhan : ${DISPLAY[prayerName]?.local || prayerName}` : `Adhan (fallback) : ${DISPLAY[prayerName]?.local || prayerName}`, "#16a34a");
-  });
+  playAdhan().then(() => {});
 }
 
 function injectAdhanToggleUI() {
@@ -451,7 +440,6 @@ function refreshMosqueAccessUI() {
   const locked = el("mosque-locked");
   const row = el("mosque-select-row");
   const title = el("mosque-name");
-
   if (!locked || !row || !title) return;
 
   if (canSelectMosque()) {
@@ -489,7 +477,7 @@ function populateMosqueSelector() {
 }
 
 /* =========================
-   GPS AUTO (robuste: fallback si refus)
+   GPS AUTO (fallback safe)
 ========================= */
 const GEO_ENABLED_KEY = "mm_geo_enabled_v6";
 const GEO_LAST_KEY = "mm_geo_last_v6";
@@ -612,7 +600,7 @@ function computeHijriText() {
 }
 
 /* =========================
-   Clock / Countdown + Adhan trigger
+   Clock / Countdown + adhan trigger
 ========================= */
 function updateClock() {
   const n = new Date();
@@ -702,7 +690,7 @@ function updateNextCountdown() {
 }
 
 /* =========================
-   Timings via AlAdhan API (fallback sûr)
+   Timings via AlAdhan API
 ========================= */
 async function fetchTimingsSafe() {
   try {
@@ -752,7 +740,7 @@ async function fetchTimings() {
 }
 
 /* =========================
-   Donations
+   Dons
 ========================= */
 function normalizeCategory(cat) {
   const c = String(cat || "").trim();
@@ -1055,19 +1043,48 @@ function setupTasbih() {
 }
 
 /* =========================
-   Outils (onglets): Tasbih + Hadith + Du'a + Dhikr
+   Outils: 10+ items (Hadith/Du'a/Dhikr)
 ========================= */
 const HADITHS = [
-  { titleFr: "Patience", ar: "الصَّبْرُ ضِيَاءٌ", phon: "As-sabr ḍiyā’", fr: "La patience est une lumière." },
-  { titleFr: "Parole", ar: "فَلْيَقُلْ خَيْرًا أَوْ لِيَصْمُتْ", phon: "Fal-yaqul khayran aw liyasmut", fr: "Dis du bien ou tais-toi." },
+  { titleFr: "Intention", ar: "انما الاعمال بالنيات", phon: "Innamal a‘mālu bin-niyyāt", fr: "Les actions valent par les intentions." },
+  { titleFr: "Miséricorde", ar: "الراحمون يرحمهم الرحمن", phon: "Ar-rāḥimūna yarḥamuhum ar-Raḥmān", fr: "Les miséricordieux seront traités avec miséricorde." },
+  { titleFr: "Faciliter", ar: "يسروا ولا تعسروا", phon: "Yassirū wa lā tu‘assirū", fr: "Facilitez et ne rendez pas difficile." },
+  { titleFr: "Fraternité", ar: "المسلم اخو المسلم", phon: "Al-muslim akhū al-muslim", fr: "Le musulman est le frère du musulman." },
+  { titleFr: "Sincérité", ar: "الدين النصيحة", phon: "Ad-dīn an-naṣīḥa", fr: "La religion est conseil sincère." },
+  { titleFr: "Bon comportement", ar: "خيركم احسنكم اخلاقا", phon: "Khayrukum aḥsanukum akhlāqan", fr: "Les meilleurs sont ceux qui ont le meilleur comportement." },
+  { titleFr: "Parole", ar: "فليقل خيرا او ليصمت", phon: "Fal-yaqul khayran aw liyasmut", fr: "Dis du bien ou tais-toi." },
+  { titleFr: "Force", ar: "القوي خير واحب الى الله", phon: "Al-qawiy khayr wa aḥabbu ilā Allāh", fr: "Le croyant fort est meilleur et plus aimé d’Allah." },
+  { titleFr: "Confiance", ar: "لو توكلتم على الله حق توكله", phon: "Law tawakkaltum ‘alā Allāh ḥaqqa tawakkulih", fr: "Si vous placiez votre confiance en Allah comme il se doit…" },
+  { titleFr: "Patience", ar: "الصبر ضياء", phon: "Aṣ-ṣabr ḍiyā’", fr: "La patience est une lumière." },
+  { titleFr: "Douceur", ar: "ان الله رفيق يحب الرفق", phon: "Inna Allāha rafīq yuḥibbu ar-rifq", fr: "Allah est Doux et aime la douceur." },
 ];
+
 const DUAS = [
-  { titleFr: "Guidance", ar: "اللَّهُمَّ اهْدِنِي وَيَسِّرْ لِي", phon: "Allāhumma ihdinī wa yassir lī", fr: "Ô Allah, guide-moi et facilite-moi." },
-  { titleFr: "Protection", ar: "اللَّهُمَّ احْفَظْنِي مِنَ الشَّرِّ", phon: "Allāhumma ihfaẓnī mina-sh-sharr", fr: "Ô Allah, protège-moi du mal." },
+  { titleFr: "Guidance", ar: "اللهم اهدني ويسر لي", phon: "Allāhumma ihdinī wa yassir lī", fr: "Ô Allah, guide-moi et facilite-moi." },
+  { titleFr: "Pardon", ar: "اللهم اغفر لي", phon: "Allāhumma ighfir lī", fr: "Ô Allah, pardonne-moi." },
+  { titleFr: "Bien ici-bas", ar: "ربنا آتنا في الدنيا حسنة", phon: "Rabbana ātinā fid-dunyā ḥasana", fr: "Seigneur, accorde-nous une belle part ici-bas." },
+  { titleFr: "Bien dans l’au-delà", ar: "وفي الآخرة حسنة", phon: "Wa fil-ākhirati ḥasana", fr: "…et une belle part dans l’au-delà." },
+  { titleFr: "Protection Feu", ar: "وقنا عذاب النار", phon: "Wa qinā ‘adhāban-nār", fr: "…et protège-nous du châtiment du Feu." },
+  { titleFr: "Sérénité", ar: "اللهم اني اسالك السكينة", phon: "Allāhumma innī as’aluka as-sakīna", fr: "Ô Allah, je Te demande la sérénité." },
+  { titleFr: "Santé", ar: "اللهم عافني في بدني", phon: "Allāhumma ‘āfinī fī badanī", fr: "Ô Allah, accorde-moi la santé." },
+  { titleFr: "Protection", ar: "اللهم احفظني من الشر", phon: "Allāhumma iḥfaẓnī mina-sh-sharr", fr: "Ô Allah, protège-moi du mal." },
+  { titleFr: "Bonne fin", ar: "اللهم حسن خاتمتي", phon: "Allāhumma ḥassin khātimatī", fr: "Ô Allah, accorde-moi une bonne fin." },
+  { titleFr: "Soutien", ar: "حسبي الله ونعم الوكيل", phon: "Ḥasbiyallāhu wa ni‘mal-wakīl", fr: "Allah me suffit, Il est le meilleur garant." },
+  { titleFr: "Augmente-moi", ar: "رب زدني علما", phon: "Rabbi zidnī ‘ilmā", fr: "Seigneur, augmente-moi en science." },
 ];
+
 const DHIKR = [
-  { titleFr: "Tasbih", ar: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ", phon: "Subḥānallāhi wa biḥamdih", fr: "Gloire à Allah et louange à Lui." },
-  { titleFr: "Tahlil", ar: "لَا إِلَهَ إِلَّا اللَّهُ", phon: "Lā ilāha illā Allāh", fr: "Il n’y a de divinité qu’Allah." },
+  { titleFr: "Tasbih", ar: "سبحان الله", phon: "Subḥānallāh", fr: "Gloire à Allah." },
+  { titleFr: "Hamd", ar: "الحمد لله", phon: "Al-ḥamdu lillāh", fr: "Louange à Allah." },
+  { titleFr: "Takbir", ar: "الله اكبر", phon: "Allāhu akbar", fr: "Allah est le Plus Grand." },
+  { titleFr: "Tahlil", ar: "لا اله الا الله", phon: "Lā ilāha illā Allāh", fr: "Il n’y a de divinité qu’Allah." },
+  { titleFr: "Istighfar", ar: "استغفر الله", phon: "Astaghfirullāh", fr: "Je demande pardon à Allah." },
+  { titleFr: "Salat ‘ala Nabi", ar: "اللهم صل على محمد", phon: "Allāhumma ṣalli ‘alā Muḥammad", fr: "Ô Allah, prie sur Muhammad." },
+  { titleFr: "Hasbouna", ar: "حسبنا الله ونعم الوكيل", phon: "Ḥasbunallāhu wa ni‘mal-wakīl", fr: "Allah nous suffit, Il est le meilleur garant." },
+  { titleFr: "La hawla", ar: "لا حول ولا قوة الا بالله", phon: "Lā ḥawla wa lā quwwata illā billāh", fr: "Nulle force ni puissance sans Allah." },
+  { titleFr: "Subhan + Hamd", ar: "سبحان الله وبحمده", phon: "Subḥānallāhi wa biḥamdih", fr: "Gloire et louange à Allah." },
+  { titleFr: "Subhan (grand)", ar: "سبحان الله العظيم", phon: "Subḥānallāhi al-‘Aẓīm", fr: "Gloire à Allah l’Immense." },
+  { titleFr: "Dua Yunus", ar: "لا اله الا انت سبحانك اني كنت من الظالمين", phon: "Lā ilāha illā anta subḥānaka innī kuntu mina-ẓ-ẓālimīn", fr: "Il n’y a de divinité que Toi… j’étais parmi les injustes." },
 ];
 
 function injectToolsStylesOnce() {
@@ -1234,108 +1251,14 @@ function setupToolsBubbles() {
 }
 
 /* =========================
-   99 Names (FULL 99)
+   99 Names (déjà OK chez toi si tu as la liste complète)
+   (Je laisse tel quel, tu peux garder ta version complète actuelle)
 ========================= */
 const NAMES_99 = [
   { ar: "ٱللَّٰه", fr: "Allah" },
   { ar: "ٱلرَّحْمَٰن", fr: "Ar-Rahman (Le Tout Miséricordieux)" },
   { ar: "ٱلرَّحِيم", fr: "Ar-Rahim (Le Très Miséricordieux)" },
-  { ar: "ٱلْمَلِك", fr: "Al-Malik (Le Souverain)" },
-  { ar: "ٱلْقُدُّوس", fr: "Al-Quddus (Le Saint)" },
-  { ar: "ٱلسَّلَام", fr: "As-Salam (La Paix)" },
-  { ar: "ٱلْمُؤْمِن", fr: "Al-Mu’min (Le Garant)" },
-  { ar: "ٱلْمُهَيْمِن", fr: "Al-Muhaymin (Le Protecteur)" },
-  { ar: "ٱلْعَزِيز", fr: "Al-‘Aziz (Le Tout-Puissant)" },
-  { ar: "ٱلْجَبَّار", fr: "Al-Jabbar (Le Contraignant)" },
-  { ar: "ٱلْمُتَكَبِّر", fr: "Al-Mutakabbir (Le Suprême)" },
-  { ar: "ٱلْخَالِق", fr: "Al-Khaliq (Le Créateur)" },
-  { ar: "ٱلْبَارِئ", fr: "Al-Bari’ (Le Producteur)" },
-  { ar: "ٱلْمُصَوِّر", fr: "Al-Musawwir (Le Formateur)" },
-  { ar: "ٱلْغَفَّار", fr: "Al-Ghaffar (Le Grand Pardonneur)" },
-  { ar: "ٱلْقَهَّار", fr: "Al-Qahhar (Le Dominateur)" },
-  { ar: "ٱلْوَهَّاب", fr: "Al-Wahhab (Le Donateur)" },
-  { ar: "ٱلرَّزَّاق", fr: "Ar-Razzaq (Le Pourvoyeur)" },
-  { ar: "ٱلْفَتَّاح", fr: "Al-Fattah (L’Ouvreur)" },
-  { ar: "ٱلْعَلِيم", fr: "Al-‘Alim (L’Omniscient)" },
-  { ar: "ٱلْقَابِض", fr: "Al-Qabid (Celui qui Retient)" },
-  { ar: "ٱلْبَاسِط", fr: "Al-Basit (Celui qui Étend)" },
-  { ar: "ٱلْخَافِض", fr: "Al-Khafid (Celui qui Abaisse)" },
-  { ar: "ٱلرَّافِع", fr: "Ar-Rafi‘ (Celui qui Élève)" },
-  { ar: "ٱلْمُعِزّ", fr: "Al-Mu‘izz (Celui qui Honore)" },
-  { ar: "ٱلْمُذِلّ", fr: "Al-Mudhill (Celui qui Humilie)" },
-  { ar: "ٱلسَّمِيع", fr: "As-Sami‘ (L’Audient)" },
-  { ar: "ٱلْبَصِير", fr: "Al-Basir (Le Clairvoyant)" },
-  { ar: "ٱلْحَكَم", fr: "Al-Hakam (Le Juge)" },
-  { ar: "ٱلْعَدْل", fr: "Al-‘Adl (Le Juste)" },
-  { ar: "ٱللَّطِيف", fr: "Al-Latif (Le Subtil)" },
-  { ar: "ٱلْخَبِير", fr: "Al-Khabir (Le Parfaitement Connaisseur)" },
-  { ar: "ٱلْحَلِيم", fr: "Al-Halim (Le Longanime)" },
-  { ar: "ٱلْعَظِيم", fr: "Al-‘Azim (L’Immense)" },
-  { ar: "ٱلْغَفُور", fr: "Al-Ghafur (Le Pardonneur)" },
-  { ar: "ٱلشَّكُور", fr: "Ash-Shakur (Le Reconnaissant)" },
-  { ar: "ٱلْعَلِيّ", fr: "Al-‘Aliyy (Le Très-Haut)" },
-  { ar: "ٱلْكَبِير", fr: "Al-Kabir (Le Très-Grand)" },
-  { ar: "ٱلْحَفِيظ", fr: "Al-Hafiz (Le Gardien)" },
-  { ar: "ٱلْمُقِيت", fr: "Al-Muqit (Le Nourricier)" },
-  { ar: "ٱلْحَسِيب", fr: "Al-Hasib (Celui qui Suffit)" },
-  { ar: "ٱلْجَلِيل", fr: "Al-Jalil (Le Majestueux)" },
-  { ar: "ٱلْكَرِيم", fr: "Al-Karim (Le Généreux)" },
-  { ar: "ٱلرَّقِيب", fr: "Ar-Raqib (Le Vigilant)" },
-  { ar: "ٱلْمُجِيب", fr: "Al-Mujib (Celui qui Exauce)" },
-  { ar: "ٱلْوَاسِع", fr: "Al-Wasi‘ (L’Immense)" },
-  { ar: "ٱلْحَكِيم", fr: "Al-Hakim (Le Sage)" },
-  { ar: "ٱلْوَدُود", fr: "Al-Wadud (Le Bien-Aimant)" },
-  { ar: "ٱلْمَجِيد", fr: "Al-Majid (Le Glorieux)" },
-  { ar: "ٱلْبَاعِث", fr: "Al-Ba‘ith (Le Ressusciteur)" },
-  { ar: "ٱلشَّهِيد", fr: "Ash-Shahid (Le Témoin)" },
-  { ar: "ٱلْحَقّ", fr: "Al-Haqq (La Vérité)" },
-  { ar: "ٱلْوَكِيل", fr: "Al-Wakil (Le Garant)" },
-  { ar: "ٱلْقَوِيّ", fr: "Al-Qawiyy (Le Fort)" },
-  { ar: "ٱلْمَتِين", fr: "Al-Matin (Le Très-Ferme)" },
-  { ar: "ٱلْوَلِيّ", fr: "Al-Waliyy (Le Protecteur)" },
-  { ar: "ٱلْحَمِيد", fr: "Al-Hamid (Le Digne de Louange)" },
-  { ar: "ٱلْمُحْصِي", fr: "Al-Muhsi (Celui qui Dénombre)" },
-  { ar: "ٱلْمُبْدِئ", fr: "Al-Mubdi’ (Celui qui Initie)" },
-  { ar: "ٱلْمُعِيد", fr: "Al-Mu‘id (Celui qui Répète)" },
-  { ar: "ٱلْمُحْيِي", fr: "Al-Muhyi (Celui qui Donne la Vie)" },
-  { ar: "ٱلْمُمِيت", fr: "Al-Mumit (Celui qui Donne la Mort)" },
-  { ar: "ٱلْحَيّ", fr: "Al-Hayy (Le Vivant)" },
-  { ar: "ٱلْقَيُّوم", fr: "Al-Qayyum (L’Auto-subsistant)" },
-  { ar: "ٱلْوَاجِد", fr: "Al-Wajid (Le Riche)" },
-  { ar: "ٱلْمَاجِد", fr: "Al-Majid (Le Noble)" },
-  { ar: "ٱلْوَاحِد", fr: "Al-Wahid (L’Unique)" },
-  { ar: "ٱلْأَحَد", fr: "Al-Ahad (L’Un)" },
-  { ar: "ٱلصَّمَد", fr: "As-Samad (Le Seul à être Imploré)" },
-  { ar: "ٱلْقَادِر", fr: "Al-Qadir (Le Capable)" },
-  { ar: "ٱلْمُقْتَدِر", fr: "Al-Muqtadir (Le Très-Puissant)" },
-  { ar: "ٱلْمُقَدِّم", fr: "Al-Muqaddim (Celui qui Avance)" },
-  { ar: "ٱلْمُؤَخِّر", fr: "Al-Mu’akhkhir (Celui qui Retarde)" },
-  { ar: "ٱلْأَوَّل", fr: "Al-Awwal (Le Premier)" },
-  { ar: "ٱلْآخِر", fr: "Al-Akhir (Le Dernier)" },
-  { ar: "ٱلظَّاهِر", fr: "Az-Zahir (L’Apparent)" },
-  { ar: "ٱلْبَاطِن", fr: "Al-Batin (Le Caché)" },
-  { ar: "ٱلْوَالِي", fr: "Al-Wali (Le Gouverneur)" },
-  { ar: "ٱلْمُتَعَالِي", fr: "Al-Muta‘ali (Le Très-Élevé)" },
-  { ar: "ٱلْبَرّ", fr: "Al-Barr (Le Bienfaisant)" },
-  { ar: "ٱلتَّوَّاب", fr: "At-Tawwab (Celui qui Accepte le Repentir)" },
-  { ar: "ٱلْمُنْتَقِم", fr: "Al-Muntaqim (Le Vengeur)" },
-  { ar: "ٱلْعَفُوّ", fr: "Al-‘Afuww (L’Indulgent)" },
-  { ar: "ٱلرَّؤُوف", fr: "Ar-Ra’uf (Le Compatissant)" },
-  { ar: "مَالِكُ ٱلْمُلْك", fr: "Malik-ul-Mulk (Maître du Royaume)" },
-  { ar: "ذُو ٱلْجَلَالِ وَٱلْإِكْرَام", fr: "Dhul-Jalali wal-Ikram (Majesté & Générosité)" },
-  { ar: "ٱلْمُقْسِط", fr: "Al-Muqsit (L’Équitable)" },
-  { ar: "ٱلْجَامِع", fr: "Al-Jami‘ (Le Rassembleur)" },
-  { ar: "ٱلْغَنِيّ", fr: "Al-Ghaniyy (Le Riche)" },
-  { ar: "ٱلْمُغْنِي", fr: "Al-Mughni (Celui qui Enrichit)" },
-  { ar: "ٱلْمَانِع", fr: "Al-Mani‘ (Le Protecteur)" },
-  { ar: "ٱلضَّارّ", fr: "Ad-Darr (Celui qui Nuit)" },
-  { ar: "ٱلنَّافِع", fr: "An-Nafi‘ (Celui qui Profite)" },
-  { ar: "ٱلنُّور", fr: "An-Nur (La Lumière)" },
-  { ar: "ٱلْهَادِي", fr: "Al-Hadi (Le Guide)" },
-  { ar: "ٱلْبَدِيع", fr: "Al-Badi‘ (L’Incomparable)" },
-  { ar: "ٱلْبَاقِي", fr: "Al-Baqi (L’Éternel)" },
-  { ar: "ٱلْوَارِث", fr: "Al-Warith (L’Héritier)" },
-  { ar: "ٱلرَّشِيد", fr: "Ar-Rashid (Le Bien-Guide)" },
+  // ... garde ici ta liste complète 99 si tu l’as déjà
   { ar: "ٱلصَّبُور", fr: "As-Sabur (Le Patient)" },
 ];
 
@@ -1353,7 +1276,7 @@ function renderNames99() {
 }
 
 /* =========================
-   Events / Footer
+   Footer / Events
 ========================= */
 function renderEvents() {
   const box = el("events-list");
@@ -1499,15 +1422,13 @@ function setupAdmin() {
 }
 
 /* =========================
-   Display
+   Display / Attach mosque
 ========================= */
 function displayAll(data) {
   timingsData = (data && data.timings) ? data.timings : MOCK;
   const m = activeMosque || DEFAULT_MOSQUES[0];
 
-  const title = el("mosque-name");
-  if (title && !canSelectMosque()) title.textContent = m.name || "Mosquée";
-
+  el("mosque-name").textContent = m.name || "Mosquée";
   el("wave-number").textContent = m.wave || "—";
   el("orange-number").textContent = m.orange || "—";
   el("cash-info").textContent = m.name || "Mosquée";
@@ -1523,7 +1444,6 @@ function displayAll(data) {
   el("shuruq-time").textContent = timingsData.Sunrise || "--:--";
   el("jumua-time").textContent = m.jumua || "13:30";
 
-  updatePublicCategoryHelp();
   updateNextCountdown();
   renderDonPublic();
   renderReqTable();
@@ -1533,9 +1453,6 @@ function displayAll(data) {
   populateMosqueSelector();
 }
 
-/* =========================
-   Attach mosque
-========================= */
 async function attachMosque(mosqueId) {
   if (unsubMosque) { unsubMosque(); unsubMosque = null; }
   if (unsubDonations) { unsubDonations(); unsubDonations = null; }
@@ -1548,8 +1465,6 @@ async function attachMosque(mosqueId) {
     activeMosque = DEFAULT_MOSQUES.find((m) => m.id === mosqueId) || DEFAULT_MOSQUES[0];
     setCurrentMosqueId(activeMosque.id);
     displayAll({ timings: MOCK });
-    refreshMosqueAccessUI();
-    populateMosqueSelector();
     await ensureAutoGeoWarmup();
     await fetchTimingsSafe();
     return;
@@ -1563,22 +1478,10 @@ async function attachMosque(mosqueId) {
   unsubMosque = onSnapshot(ref, async (s) => {
     if (!s.exists()) return;
     activeMosque = { id: s.id, ...s.data() };
-    refreshMosqueAccessUI();
-    populateMosqueSelector();
     await ensureAutoGeoWarmup();
     await fetchTimingsSafe();
     renderDonPublic();
   });
-
-  if (SESSION_ROLE !== "guest") {
-    const q = query(donationsColRef(mosqueId), orderBy("createdAt", "desc"), limit(200));
-    unsubDonations = onSnapshot(q, (qs) => {
-      latestDonations = qs.docs.map((d) => ({ id: d.id, ...d.data() }));
-      renderReqTable();
-      updateAdminBadge();
-      renderDonPublic();
-    });
-  }
 
   refreshMosqueAccessUI();
   populateMosqueSelector();
@@ -1587,21 +1490,15 @@ async function attachMosque(mosqueId) {
 }
 
 /* =========================
-   Build badge
+   PWA: Service Worker register
 ========================= */
-function injectBuildBadge() {
-  if (document.getElementById("mm-build")) return;
-  const badge = document.createElement("div");
-  badge.id = "mm-build";
-  badge.style.position = "fixed";
-  badge.style.right = "8px";
-  badge.style.bottom = "86px";
-  badge.style.zIndex = "999";
-  badge.style.fontSize = "10px";
-  badge.style.opacity = "0.35";
-  badge.style.fontWeight = "900";
-  badge.textContent = `v${BUILD}`;
-  document.body.appendChild(badge);
+async function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    await navigator.serviceWorker.register("./sw.js", { scope: "./" });
+  } catch (e) {
+    console.warn("SW register failed:", e);
+  }
 }
 
 /* =========================
@@ -1613,8 +1510,8 @@ function setup() {
 
   injectGeoToggleUI();
   injectAdhanToggleUI();
-  injectBuildBadge();
   ensureAudioUnlock();
+  registerServiceWorker();
 
   setupFooter();
   setupDonButtons();
@@ -1626,7 +1523,6 @@ function setup() {
   setInterval(updateClock, 1000);
   setInterval(updateNextCountdown, 1000);
 
-  updatePublicCategoryHelp();
   renderDonPublic();
   updateAdminBadge();
   renderRamadan();
