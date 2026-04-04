@@ -24,9 +24,9 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 /* =========================
-   Build / Version
+   Build
 ========================= */
-const BUILD = "7100";
+const BUILD = "7200";
 
 /* =========================
    Firebase
@@ -117,6 +117,7 @@ const DON_CATEGORY_HELP = {
   Travaux: "Travaux : entretien, rénovation, équipement.",
 };
 
+// Ramadan OFF (on réactivera plus tard)
 const RAMADAN_ENABLED = false;
 
 /* =========================
@@ -212,7 +213,7 @@ function bindModals() {
 }
 
 /* =========================
-   Clipboard / Share
+   Clipboard / WhatsApp
 ========================= */
 async function copyToClipboard(text) {
   const t = String(text || "").trim();
@@ -242,6 +243,10 @@ function openWhatsAppText(text) {
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
 }
 
+function openWhatsApp(to, msg) {
+  window.open(`https://wa.me/${encodeURIComponent(to)}?text=${encodeURIComponent(msg)}`, "_blank");
+}
+
 /* =========================
    Audio (Adhan step 1: beep)
 ========================= */
@@ -256,9 +261,9 @@ function setAdhanEnabled(on) {
 
 function ensureAudioUnlock() {
   if (audioUnlocked) return;
+
   const unlock = async () => {
     try {
-      // Create + close a tiny AudioContext to unlock on iOS
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const o = ctx.createOscillator();
       const g = ctx.createGain();
@@ -269,12 +274,7 @@ function ensureAudioUnlock() {
       o.stop(ctx.currentTime + 0.01);
       await ctx.close();
       audioUnlocked = true;
-      showStatus("Audio activé ✅", "#16a34a");
-      document.removeEventListener("pointerdown", unlock, { capture: true });
-      document.removeEventListener("keydown", unlock, { capture: true });
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
 
   document.addEventListener("pointerdown", unlock, { capture: true, once: true });
@@ -291,13 +291,11 @@ function playAdhanBeep() {
     o.connect(g);
     g.connect(ctx.destination);
 
-    // soft envelope
     g.gain.setValueAtTime(0.0001, ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.03);
 
     o.start();
 
-    // little “adhan-like” pattern (beep pattern)
     const seq = [660, 740, 660, 520, 660];
     seq.forEach((f, i) => {
       o.frequency.setValueAtTime(f, ctx.currentTime + i * 0.22);
@@ -344,7 +342,6 @@ function injectAdhanToggleUI() {
       Adhan (son)
     </label>
   `;
-
   anchor.parentNode.insertBefore(row, anchor.nextSibling);
 
   const toggle = document.getElementById("mm-adhan-toggle");
@@ -460,7 +457,7 @@ function populateMosqueSelector() {
 }
 
 /* =========================
-   GPS AUTO
+   GPS AUTO (robuste: fallback si refus)
 ========================= */
 const GEO_ENABLED_KEY = "mm_geo_enabled_v6";
 const GEO_LAST_KEY = "mm_geo_last_v6";
@@ -474,9 +471,7 @@ function isGeoEnabled() {
   if (v == null) return GEO_DEFAULT_ON;
   return v === "1";
 }
-function setGeoEnabled(on) {
-  localStorage.setItem(GEO_ENABLED_KEY, on ? "1" : "0");
-}
+function setGeoEnabled(on) { localStorage.setItem(GEO_ENABLED_KEY, on ? "1" : "0"); }
 
 function loadLastCoords() {
   try {
@@ -486,13 +481,9 @@ function loadLastCoords() {
     if (!obj || typeof obj.lat !== "number" || typeof obj.lon !== "number" || typeof obj.ts !== "number") return null;
     if (Date.now() - obj.ts > GEO_CACHE_MAX_AGE_MS) return null;
     return { lat: obj.lat, lon: obj.lon };
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
-function saveLastCoords(lat, lon) {
-  localStorage.setItem(GEO_LAST_KEY, JSON.stringify({ lat, lon, ts: Date.now() }));
-}
+function saveLastCoords(lat, lon) { localStorage.setItem(GEO_LAST_KEY, JSON.stringify({ lat, lon, ts: Date.now() })); }
 function shouldRefetchGeoNow() {
   const last = parseInt(localStorage.getItem(GEO_LAST_FETCH_KEY) || "0", 10) || 0;
   return Date.now() - last > GEO_FETCH_DEBOUNCE_MS;
@@ -589,7 +580,7 @@ function computeHijriText() {
 }
 
 /* =========================
-   Clock / countdown
+   Clock / Countdown + Adhan trigger
 ========================= */
 function updateClock() {
   const n = new Date();
@@ -620,7 +611,6 @@ function buildPrayerTimesForToday() {
     }
   });
 
-  // Jumua override for Dhuhr
   const now = new Date();
   if (now.getDay() === 5 && activeMosque?.jumua) {
     const hm = parseHM(activeMosque.jumua || "13:30");
@@ -635,7 +625,6 @@ function checkAdhan(now) {
   if (!timingsData) return;
   const times = buildPrayerTimesForToday();
   const windowMs = 15 * 1000;
-
   PRAYER_NAMES.forEach((k) => {
     const t = times[k];
     if (!t) return;
@@ -681,7 +670,7 @@ function updateNextCountdown() {
 }
 
 /* =========================
-   Timings via AlAdhan API
+   Timings via AlAdhan API (fallback sûr)
 ========================= */
 function buildTuneParam(offsets) {
   const a = offsets && offsets.length === 6 ? offsets : [0, 0, 0, 0, 0, 0];
@@ -888,11 +877,9 @@ async function setReqStatus(donationId, act) {
   });
 }
 
-/* WhatsApp */
-function openWhatsApp(to, msg) {
-  window.open(`https://wa.me/${encodeURIComponent(to)}?text=${encodeURIComponent(msg)}`, "_blank");
-}
-
+/* =========================
+   Don buttons
+========================= */
 function setupDonButtons() {
   el("don-public-category").onchange = () => updatePublicCategoryHelp();
 
@@ -923,130 +910,407 @@ BarakAllahou fik.`);
 }
 
 /* =========================
-   Tasbih (simple)
+   Tasbih (complet: objectif + barre + today)
+   (vibration retirée comme tu veux)
 ========================= */
 function setupTasbih() {
-  const k = "tasbih_count";
+  const K_CYCLE = "tasbih_cycle_count";
+  const K_DAY = "tasbih_day_count";
+  const K_GOAL = "tasbih_goal";
+  const K_DAY_KEY = "tasbih_day_key";
+
   const countEl = el("tasbih-count");
   const plus = el("tasbih-plus");
   const reset = el("tasbih-reset");
   if (!countEl || !plus || !reset) return;
 
-  const get = () => parseInt(localStorage.getItem(k) || "0", 10) || 0;
-  const set = (v) => {
-    localStorage.setItem(k, String(Math.max(0, v)));
-    countEl.textContent = String(Math.max(0, v));
+  const toolBox = countEl.closest(".tool");
+
+  const dayKey = todayKey();
+  const storedDayKey = localStorage.getItem(K_DAY_KEY);
+  if (storedDayKey !== dayKey) {
+    localStorage.setItem(K_DAY_KEY, dayKey);
+    localStorage.setItem(K_DAY, "0");
+  }
+
+  const getGoal = () => {
+    const g = parseInt(localStorage.getItem(K_GOAL) || "33", 10);
+    return [33, 99, 100].includes(g) ? g : 33;
+  };
+  const setGoal = (v) => {
+    const g = parseInt(v, 10);
+    localStorage.setItem(K_GOAL, String([33, 99, 100].includes(g) ? g : 33));
+    if (getCycle() >= getGoal()) setCycle(0);
+    renderMeta();
   };
 
-  set(get());
-  plus.onclick = () => set(get() + 1);
-  reset.onclick = () => set(0);
+  const getCycle = () => parseInt(localStorage.getItem(K_CYCLE) || "0", 10) || 0;
+  const setCycle = (v) => {
+    const nv = Math.max(0, parseInt(v, 10) || 0);
+    localStorage.setItem(K_CYCLE, String(nv));
+    countEl.textContent = String(nv);
+  };
+
+  const getDay = () => parseInt(localStorage.getItem(K_DAY) || "0", 10) || 0;
+  const setDay = (v) => localStorage.setItem(K_DAY, String(Math.max(0, parseInt(v, 10) || 0)));
+
+  if (!document.getElementById("tasbih-meta")) {
+    const meta = document.createElement("div");
+    meta.id = "tasbih-meta";
+    meta.className = "small";
+    meta.style.display = "grid";
+    meta.style.gap = "6px";
+    meta.style.marginTop = "8px";
+    meta.innerHTML = `
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <span style="font-weight:900">Objectif</span>
+        <select id="tasbih-goal" style="padding:6px 10px;border-radius:10px;border:1px solid rgba(229,231,235,.7);font-weight:900;background:var(--card);color:var(--ink)">
+          <option value="33">33</option>
+          <option value="99">99</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+
+      <div style="height:8px;border-radius:999px;overflow:hidden;background:rgba(232,244,241,.95)">
+        <span id="tasbih-progress" style="display:block;height:100%;width:0%;background:#16a34a"></span>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;gap:10px">
+        <span>Aujourd’hui : <strong id="tasbih-today">0</strong></span>
+        <span>Reste : <strong id="tasbih-left">0</strong></span>
+      </div>
+    `;
+    toolBox?.querySelector(".tasbih")?.appendChild(meta);
+  }
+
+  const goalSel = document.getElementById("tasbih-goal");
+
+  function renderMeta() {
+    const goal = getGoal();
+    const cycle = getCycle();
+    const today = getDay();
+    const left = Math.max(0, goal - cycle);
+    const pct = goal ? Math.min(100, Math.round((cycle * 100) / goal)) : 0;
+
+    const todayEl = document.getElementById("tasbih-today");
+    const leftEl = document.getElementById("tasbih-left");
+    const bar = document.getElementById("tasbih-progress");
+
+    if (todayEl) todayEl.textContent = String(today);
+    if (leftEl) leftEl.textContent = String(left);
+    if (bar) bar.style.width = `${pct}%`;
+    if (goalSel) goalSel.value = String(goal);
+  }
+
+  setCycle(getCycle());
+  renderMeta();
+
+  plus.onclick = () => {
+    const goal = getGoal();
+    const next = getCycle() + 1;
+    setDay(getDay() + 1);
+
+    if (next >= goal) {
+      setCycle(0);
+      showStatus(`Objectif ${goal} atteint ✅`, "#16a34a");
+    } else {
+      setCycle(next);
+    }
+    renderMeta();
+  };
+
+  reset.onclick = () => {
+    setCycle(0);
+    setDay(0);
+    renderMeta();
+  };
+
+  if (goalSel) goalSel.onchange = () => setGoal(goalSel.value);
 }
 
 /* =========================
-   Footer / 99 Names (FULL 99)
+   Outils (onglets): Tasbih + Hadith + Du'a + Dhikr
+========================= */
+const HADITHS = [
+  { titleFr: "Patience", ar: "الصَّبْرُ ضِيَاءٌ", phon: "As-sabr ḍiyā’", fr: "La patience est une lumière." },
+  { titleFr: "Parole", ar: "فَلْيَقُلْ خَيْرًا أَوْ لِيَصْمُتْ", phon: "Fal-yaqul khayran aw liyasmut", fr: "Dis du bien ou tais-toi." },
+];
+const DUAS = [
+  { titleFr: "Guidance", ar: "اللَّهُمَّ اهْدِنِي وَيَسِّرْ لِي", phon: "Allāhumma ihdinī wa yassir lī", fr: "Ô Allah, guide-moi et facilite-moi." },
+  { titleFr: "Protection", ar: "اللَّهُمَّ احْفَظْنِي مِنَ الشَّرِّ", phon: "Allāhumma ihfaẓnī mina-sh-sharr", fr: "Ô Allah, protège-moi du mal." },
+];
+const DHIKR = [
+  { titleFr: "Tasbih", ar: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ", phon: "Subḥānallāhi wa biḥamdih", fr: "Gloire à Allah et louange à Lui." },
+  { titleFr: "Tahlil", ar: "لَا إِلَهَ إِلَّا اللَّهُ", phon: "Lā ilāha illā Allāh", fr: "Il n’y a de divinité qu’Allah." },
+];
+
+function injectToolsStylesOnce() {
+  if (document.getElementById("mm-tools-style")) return;
+  const style = document.createElement("style");
+  style.id = "mm-tools-style";
+  style.textContent = `
+    .mm-pill-row{display:flex;gap:8px;overflow:auto;padding:8px 2px 2px;margin-top:6px;scrollbar-width:none}
+    .mm-pill-row::-webkit-scrollbar{display:none}
+    .mm-pill{
+      border:none;cursor:pointer;border-radius:999px;padding:8px 12px;font-weight:900;white-space:nowrap;
+      background:rgba(244,250,248,.9);
+      box-shadow:inset 0 0 0 1px rgba(227,240,235,.95);
+      color:#1f5e53;font-size:13px;
+    }
+    body.dark .mm-pill{background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);color:var(--ink)}
+    .mm-pill.active{background:var(--green);color:#fff}
+    .mm-tools-stage{margin-top:10px}
+    .mm-tools-stage .tool{display:none}
+    .mm-tools-stage .tool.mm-active{display:block}
+    .mm-mini{font-size:12px;color:var(--muted);font-weight:600;margin-top:-6px}
+    .mm-fr{font-size:13px;font-weight:600;line-height:1.35;margin-top:6px}
+    .mm-phon{font-size:12px;font-weight:600;line-height:1.35;margin-top:6px;color:var(--muted)}
+    .mm-ar{font-size:12px;font-weight:600;line-height:1.35;direction:rtl;text-align:right;margin-top:6px;opacity:.95}
+  `;
+  document.head.appendChild(style);
+}
+
+function dayIndex(listLen) {
+  const s = todayKey();
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return listLen ? h % listLen : 0;
+}
+
+function pickDaily(list, offsetKey) {
+  const base = dayIndex(list.length);
+  const off = parseInt(localStorage.getItem(offsetKey) || "0", 10) || 0;
+  return list[(base + off) % list.length];
+}
+
+function addToolCard(toolKey, toolLabel, iconHtml, list, offsetKey) {
+  const toolsGrid = document.querySelector(".tools-grid");
+  if (!toolsGrid) return;
+
+  const id = `mm-${toolKey}-card`;
+  if (document.getElementById(id)) return;
+
+  const item = pickDaily(list, offsetKey);
+  const card = document.createElement("div");
+  card.id = id;
+  card.className = "tool";
+  card.dataset.toolKey = toolKey;
+  card.dataset.toolLabel = toolLabel;
+
+  card.innerHTML = `
+    <div class="tool-title">${iconHtml} ${toolLabel} du jour</div>
+    <div class="mm-mini">${escapeHtml(item.titleFr)}</div>
+    <div class="mm-fr">${escapeHtml(item.fr)}</div>
+    <div class="mm-phon">${item.phon ? escapeHtml(item.phon) : ""}</div>
+    <div class="mm-ar">${escapeHtml(item.ar)}</div>
+
+    <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+      <button class="btn btn-primary" data-share="1" style="flex:1; min-width:110px">Partager</button>
+      <button class="btn btn-ghost" data-copy="1" style="flex:1; min-width:110px">Copier</button>
+      <button class="btn btn-primary" data-change="1" style="flex:1; min-width:110px">Changer</button>
+    </div>
+  `;
+
+  toolsGrid.appendChild(card);
+
+  card.querySelector('[data-share="1"]').onclick = () => {
+    const it = pickDaily(list, offsetKey);
+    const msg = `🕌 ${toolLabel} • ${it.titleFr}\n\n${it.ar}\n${it.phon ? it.phon + "\n\n" : "\n"}${it.fr}`;
+    openWhatsAppText(msg);
+  };
+
+  card.querySelector('[data-copy="1"]').onclick = async () => {
+    const it = pickDaily(list, offsetKey);
+    const msg = `🕌 ${toolLabel} • ${it.titleFr}\n\n${it.ar}\n${it.phon ? it.phon + "\n\n" : "\n"}${it.fr}`;
+    const ok = await copyToClipboard(msg);
+    showStatus(ok ? "Copié ✅" : "Impossible de copier.", ok ? "#16a34a" : "#ef4444");
+  };
+
+  card.querySelector('[data-change="1"]').onclick = () => {
+    const cur = parseInt(localStorage.getItem(offsetKey) || "0", 10) || 0;
+    localStorage.setItem(offsetKey, String(cur + 1));
+    const next = pickDaily(list, offsetKey);
+
+    card.querySelector(".mm-mini").textContent = next.titleFr;
+    card.querySelector(".mm-fr").textContent = next.fr;
+    card.querySelector(".mm-phon").textContent = next.phon || "";
+    card.querySelector(".mm-ar").textContent = next.ar;
+
+    showStatus(`${toolLabel} changé ✅`, "#16a34a");
+  };
+}
+
+function setupToolsBubbles() {
+  injectToolsStylesOnce();
+  const toolsSection = document.querySelector(".card.tools");
+  if (!toolsSection) return;
+
+  const grid = toolsSection.querySelector(".tools-grid");
+  if (!grid) return;
+
+  const tasbihTool = grid.querySelector("#tasbih-count")?.closest(".tool");
+  if (tasbihTool) {
+    tasbihTool.dataset.toolKey = "tasbih";
+    tasbihTool.dataset.toolLabel = "Tasbih";
+  }
+
+  addToolCard("hadith", "Hadith", '<i class="fa-solid fa-book-open"></i>', HADITHS, "hadith_offset");
+  addToolCard("dua", "Du\'a", '<i class="fa-solid fa-hands-praying"></i>', DUAS, "dua_offset");
+  addToolCard("dhikr", "Dhikr", '<i class="fa-solid fa-circle-dot"></i>', DHIKR, "dhikr_offset");
+
+  if (!document.getElementById("mm-pill-row")) {
+    const tools = Array.from(grid.querySelectorAll(".tool"));
+
+    const pillRow = document.createElement("div");
+    pillRow.id = "mm-pill-row";
+    pillRow.className = "mm-pill-row";
+
+    const stage = document.createElement("div");
+    stage.id = "mm-tools-stage";
+    stage.className = "mm-tools-stage";
+
+    tools.forEach((t) => stage.appendChild(t));
+
+    grid.innerHTML = "";
+    grid.appendChild(pillRow);
+    grid.appendChild(stage);
+
+    const order = ["tasbih", "hadith", "dua", "dhikr"];
+    order.forEach((key) => {
+      const t = Array.from(stage.querySelectorAll(".tool")).find((x) => x.dataset.toolKey === key);
+      if (!t) return;
+      const pill = document.createElement("button");
+      pill.className = "mm-pill";
+      pill.dataset.target = key;
+      pill.textContent = t.dataset.toolLabel || key;
+      pillRow.appendChild(pill);
+    });
+  }
+
+  const stage = document.getElementById("mm-tools-stage");
+  const pillRow = document.getElementById("mm-pill-row");
+  if (!stage || !pillRow) return;
+
+  const tools = Array.from(stage.querySelectorAll(".tool"));
+  const pills = Array.from(pillRow.querySelectorAll(".mm-pill"));
+
+  const saved = localStorage.getItem("tools_tab") || "tasbih";
+  const pick = (key) => {
+    localStorage.setItem("tools_tab", key);
+    tools.forEach((t) => t.classList.toggle("mm-active", t.dataset.toolKey === key));
+    pills.forEach((p) => p.classList.toggle("active", p.dataset.target === key));
+  };
+
+  pills.forEach((p) => { p.onclick = () => pick(p.dataset.target); });
+
+  const exists = tools.some((t) => t.dataset.toolKey === saved);
+  pick(exists ? saved : "tasbih");
+}
+
+/* =========================
+   99 Names (FULL 99)
 ========================= */
 const NAMES_99 = [
-  { ar: "ٱللَّٰه", fr: "Allah" },
-  { ar: "ٱلرَّحْمَٰن", fr: "Ar-Rahman (Le Tout Miséricordieux)" },
-  { ar: "ٱلرَّحِيم", fr: "Ar-Rahim (Le Très Miséricordieux)" },
-  { ar: "ٱلْمَلِك", fr: "Al-Malik (Le Souverain)" },
-  { ar: "ٱلْقُدُّوس", fr: "Al-Quddus (Le Saint)" },
-  { ar: "ٱلسَّلَام", fr: "As-Salam (La Paix)" },
-  { ar: "ٱلْمُؤْمِن", fr: "Al-Mu’min (Le Garant)" },
-  { ar: "ٱلْمُهَيْمِن", fr: "Al-Muhaymin (Le Protecteur)" },
-  { ar: "ٱلْعَزِيز", fr: "Al-‘Aziz (Le Tout-Puissant)" },
-  { ar: "ٱلْجَبَّار", fr: "Al-Jabbar (Le Contraignant)" },
-  { ar: "ٱلْمُتَكَبِّر", fr: "Al-Mutakabbir (Le Suprême)" },
-  { ar: "ٱلْخَالِق", fr: "Al-Khaliq (Le Créateur)" },
-  { ar: "ٱلْبَارِئ", fr: "Al-Bari’ (Le Producteur)" },
-  { ar: "ٱلْمُصَوِّر", fr: "Al-Musawwir (Le Formateur)" },
-  { ar: "ٱلْغَفَّار", fr: "Al-Ghaffar (Le Grand Pardonneur)" },
-  { ar: "ٱلْقَهَّار", fr: "Al-Qahhar (Le Dominateur)" },
-  { ar: "ٱلْوَهَّاب", fr: "Al-Wahhab (Le Donateur)" },
-  { ar: "ٱلرَّزَّاق", fr: "Ar-Razzaq (Le Pourvoyeur)" },
-  { ar: "ٱلْفَتَّاح", fr: "Al-Fattah (L’Ouvreur)" },
-  { ar: "ٱلْعَلِيم", fr: "Al-‘Alim (L’Omniscient)" },
-  { ar: "ٱلْقَابِض", fr: "Al-Qabid (Celui qui Retient)" },
-  { ar: "ٱلْبَاسِط", fr: "Al-Basit (Celui qui Étend)" },
-  { ar: "ٱلْخَافِض", fr: "Al-Khafid (Celui qui Abaisse)" },
-  { ar: "ٱلرَّافِع", fr: "Ar-Rafi‘ (Celui qui Élève)" },
-  { ar: "ٱلْمُعِزّ", fr: "Al-Mu‘izz (Celui qui Honore)" },
-  { ar: "ٱلْمُذِلّ", fr: "Al-Mudhill (Celui qui Humilie)" },
-  { ar: "ٱلسَّمِيع", fr: "As-Sami‘ (L’Audient)" },
-  { ar: "ٱلْبَصِير", fr: "Al-Basir (Le Clairvoyant)" },
-  { ar: "ٱلْحَكَم", fr: "Al-Hakam (Le Juge)" },
-  { ar: "ٱلْعَدْل", fr: "Al-‘Adl (Le Juste)" },
-  { ar: "ٱللَّطِيف", fr: "Al-Latif (Le Subtil)" },
-  { ar: "ٱلْخَبِير", fr: "Al-Khabir (Le Parfaitement Connaisseur)" },
-  { ar: "ٱلْحَلِيم", fr: "Al-Halim (Le Longanime)" },
-  { ar: "ٱلْعَظِيم", fr: "Al-‘Azim (L’Immense)" },
-  { ar: "ٱلْغَفُور", fr: "Al-Ghafur (Le Pardonneur)" },
-  { ar: "ٱلشَّكُور", fr: "Ash-Shakur (Le Reconnaissant)" },
-  { ar: "ٱلْعَلِيّ", fr: "Al-‘Aliyy (Le Très-Haut)" },
-  { ar: "ٱلْكَبِير", fr: "Al-Kabir (Le Très-Grand)" },
-  { ar: "ٱلْحَفِيظ", fr: "Al-Hafiz (Le Gardien)" },
-  { ar: "ٱلْمُقِيت", fr: "Al-Muqit (Le Nourricier)" },
-  { ar: "ٱلْحَسِيب", fr: "Al-Hasib (Celui qui Suffit)" },
-  { ar: "ٱلْجَلِيل", fr: "Al-Jalil (Le Majestueux)" },
-  { ar: "ٱلْكَرِيم", fr: "Al-Karim (Le Généreux)" },
-  { ar: "ٱلرَّقِيب", fr: "Ar-Raqib (Le Vigilant)" },
-  { ar: "ٱلْمُجِيب", fr: "Al-Mujib (Celui qui Exauce)" },
-  { ar: "ٱلْوَاسِع", fr: "Al-Wasi‘ (L’Immense)" },
-  { ar: "ٱلْحَكِيم", fr: "Al-Hakim (Le Sage)" },
-  { ar: "ٱلْوَدُود", fr: "Al-Wadud (Le Bien-Aimant)" },
-  { ar: "ٱلْمَجِيد", fr: "Al-Majid (Le Glorieux)" },
-  { ar: "ٱلْبَاعِث", fr: "Al-Ba‘ith (Le Ressusciteur)" },
-  { ar: "ٱلشَّهِيد", fr: "Ash-Shahid (Le Témoin)" },
-  { ar: "ٱلْحَقّ", fr: "Al-Haqq (La Vérité)" },
-  { ar: "ٱلْوَكِيل", fr: "Al-Wakil (Le Garant)" },
-  { ar: "ٱلْقَوِيّ", fr: "Al-Qawiyy (Le Fort)" },
-  { ar: "ٱلْمَتِين", fr: "Al-Matin (Le Très-Ferme)" },
-  { ar: "ٱلْوَلِيّ", fr: "Al-Waliyy (Le Protecteur)" },
-  { ar: "ٱلْحَمِيد", fr: "Al-Hamid (Le Digne de Louange)" },
-  { ar: "ٱلْمُحْصِي", fr: "Al-Muhsi (Celui qui Dénombre)" },
-  { ar: "ٱلْمُبْدِئ", fr: "Al-Mubdi’ (Celui qui Initie)" },
-  { ar: "ٱلْمُعِيد", fr: "Al-Mu‘id (Celui qui Répète)" },
-  { ar: "ٱلْمُحْيِي", fr: "Al-Muhyi (Celui qui Donne la Vie)" },
-  { ar: "ٱلْمُمِيت", fr: "Al-Mumit (Celui qui Donne la Mort)" },
-  { ar: "ٱلْحَيّ", fr: "Al-Hayy (Le Vivant)" },
-  { ar: "ٱلْقَيُّوم", fr: "Al-Qayyum (L’Auto-subsistant)" },
-  { ar: "ٱلْوَاجِد", fr: "Al-Wajid (Le Riche)" },
-  { ar: "ٱلْمَاجِد", fr: "Al-Majid (Le Noble)" },
-  { ar: "ٱلْوَاحِد", fr: "Al-Wahid (L’Unique)" },
-  { ar: "ٱلْأَحَد", fr: "Al-Ahad (L’Un)" },
-  { ar: "ٱلصَّمَد", fr: "As-Samad (Le Seul à être Imploré)" },
-  { ar: "ٱلْقَادِر", fr: "Al-Qadir (Le Capable)" },
-  { ar: "ٱلْمُقْتَدِر", fr: "Al-Muqtadir (Le Très-Puissant)" },
-  { ar: "ٱلْمُقَدِّم", fr: "Al-Muqaddim (Celui qui Avance)" },
-  { ar: "ٱلْمُؤَخِّر", fr: "Al-Mu’akhkhir (Celui qui Retarde)" },
-  { ar: "ٱلْأَوَّل", fr: "Al-Awwal (Le Premier)" },
-  { ar: "ٱلْآخِر", fr: "Al-Akhir (Le Dernier)" },
-  { ar: "ٱلظَّاهِر", fr: "Az-Zahir (L’Apparent)" },
-  { ar: "ٱلْبَاطِن", fr: "Al-Batin (Le Caché)" },
-  { ar: "ٱلْوَالِي", fr: "Al-Wali (Le Gouverneur)" },
-  { ar: "ٱلْمُتَعَالِي", fr: "Al-Muta‘ali (Le Très-Élevé)" },
-  { ar: "ٱلْبَرّ", fr: "Al-Barr (Le Bienfaisant)" },
-  { ar: "ٱلتَّوَّاب", fr: "At-Tawwab (Celui qui Accepte le Repentir)" },
-  { ar: "ٱلْمُنْتَقِم", fr: "Al-Muntaqim (Le Vengeur)" },
-  { ar: "ٱلْعَفُوّ", fr: "Al-‘Afuww (L’Indulgent)" },
-  { ar: "ٱلرَّؤُوف", fr: "Ar-Ra’uf (Le Compatissant)" },
-  { ar: "مَالِكُ ٱلْمُلْك", fr: "Malik-ul-Mulk (Maître du Royaume)" },
-  { ar: "ذُو ٱلْجَلَالِ وَٱلْإِكْرَام", fr: "Dhul-Jalali wal-Ikram (Majesté & Générosité)" },
-  { ar: "ٱلْمُقْسِط", fr: "Al-Muqsit (L’Équitable)" },
-  { ar: "ٱلْجَامِع", fr: "Al-Jami‘ (Le Rassembleur)" },
-  { ar: "ٱلْغَنِيّ", fr: "Al-Ghaniyy (Le Riche)" },
-  { ar: "ٱلْمُغْنِي", fr: "Al-Mughni (Celui qui Enrichit)" },
-  { ar: "ٱلْمَانِع", fr: "Al-Mani‘ (Le Protecteur)" },
-  { ar: "ٱلضَّارّ", fr: "Ad-Darr (Celui qui Nuit)" },
-  { ar: "ٱلنَّافِع", fr: "An-Nafi‘ (Celui qui Profite)" },
-  { ar: "ٱلنُّور", fr: "An-Nur (La Lumière)" },
-  { ar: "ٱلْهَادِي", fr: "Al-Hadi (Le Guide)" },
-  { ar: "ٱلْبَدِيع", fr: "Al-Badi‘ (L’Incomparable)" },
-  { ar: "ٱلْبَاقِي", fr: "Al-Baqi (L’Éternel)" },
-  { ar: "ٱلْوَارِث", fr: "Al-Warith (L’Héritier)" },
-  { ar: "ٱلرَّشِيد", fr: "Ar-Rashid (Le Bien-Guide)" },
-  { ar: "ٱلصَّبُور", fr: "As-Sabur (Le Patient)" },
+  { ar:"ٱللَّٰه", fr:"Allah" },
+  { ar:"ٱلرَّحْمَٰن", fr:"Ar-Rahman (Le Tout Miséricordieux)" },
+  { ar:"ٱلرَّحِيم", fr:"Ar-Rahim (Le Très Miséricordieux)" },
+  { ar:"ٱلْمَلِك", fr:"Al-Malik (Le Souverain)" },
+  { ar:"ٱلْقُدُّوس", fr:"Al-Quddus (Le Saint)" },
+  { ar:"ٱلسَّلَام", fr:"As-Salam (La Paix)" },
+  { ar:"ٱلْمُؤْمِن", fr:"Al-Mu’min (Le Garant)" },
+  { ar:"ٱلْمُهَيْمِن", fr:"Al-Muhaymin (Le Protecteur)" },
+  { ar:"ٱلْعَزِيز", fr:"Al-‘Aziz (Le Tout-Puissant)" },
+  { ar:"ٱلْجَبَّار", fr:"Al-Jabbar (Le Contraignant)" },
+  { ar:"ٱلْمُتَكَبِّر", fr:"Al-Mutakabbir (Le Suprême)" },
+  { ar:"ٱلْخَالِق", fr:"Al-Khaliq (Le Créateur)" },
+  { ar:"ٱلْبَارِئ", fr:"Al-Bari’ (Le Producteur)" },
+  { ar:"ٱلْمُصَوِّر", fr:"Al-Musawwir (Le Formateur)" },
+  { ar:"ٱلْغَفَّار", fr:"Al-Ghaffar (Le Grand Pardonneur)" },
+  { ar:"ٱلْقَهَّار", fr:"Al-Qahhar (Le Dominateur)" },
+  { ar:"ٱلْوَهَّاب", fr:"Al-Wahhab (Le Donateur)" },
+  { ar:"ٱلرَّزَّاق", fr:"Ar-Razzaq (Le Pourvoyeur)" },
+  { ar:"ٱلْفَتَّاح", fr:"Al-Fattah (L’Ouvreur)" },
+  { ar:"ٱلْعَلِيم", fr:"Al-‘Alim (L’Omniscient)" },
+  { ar:"ٱلْقَابِض", fr:"Al-Qabid (Celui qui Retient)" },
+  { ar:"ٱلْبَاسِط", fr:"Al-Basit (Celui qui Étend)" },
+  { ar:"ٱلْخَافِض", fr:"Al-Khafid (Celui qui Abaisse)" },
+  { ar:"ٱلرَّافِع", fr:"Ar-Rafi‘ (Celui qui Élève)" },
+  { ar:"ٱلْمُعِزّ", fr:"Al-Mu‘izz (Celui qui Honore)" },
+  { ar:"ٱلْمُذِلّ", fr:"Al-Mudhill (Celui qui Humilie)" },
+  { ar:"ٱلسَّمِيع", fr:"As-Sami‘ (L’Audient)" },
+  { ar:"ٱلْبَصِير", fr:"Al-Basir (Le Clairvoyant)" },
+  { ar:"ٱلْحَكَم", fr:"Al-Hakam (Le Juge)" },
+  { ar:"ٱلْعَدْل", fr:"Al-‘Adl (Le Juste)" },
+  { ar:"ٱللَّطِيف", fr:"Al-Latif (Le Subtil)" },
+  { ar:"ٱلْخَبِير", fr:"Al-Khabir (Le Parfaitement Connaisseur)" },
+  { ar:"ٱلْحَلِيم", fr:"Al-Halim (Le Longanime)" },
+  { ar:"ٱلْعَظِيم", fr:"Al-‘Azim (L’Immense)" },
+  { ar:"ٱلْغَفُور", fr:"Al-Ghafur (Le Pardonneur)" },
+  { ar:"ٱلشَّكُور", fr:"Ash-Shakur (Le Reconnaissant)" },
+  { ar:"ٱلْعَلِيّ", fr:"Al-‘Aliyy (Le Très-Haut)" },
+  { ar:"ٱلْكَبِير", fr:"Al-Kabir (Le Très-Grand)" },
+  { ar:"ٱلْحَفِيظ", fr:"Al-Hafiz (Le Gardien)" },
+  { ar:"ٱلْمُقِيت", fr:"Al-Muqit (Le Nourricier)" },
+  { ar:"ٱلْحَسِيب", fr:"Al-Hasib (Celui qui Suffit)" },
+  { ar:"ٱلْجَلِيل", fr:"Al-Jalil (Le Majestueux)" },
+  { ar:"ٱلْكَرِيم", fr:"Al-Karim (Le Généreux)" },
+  { ar:"ٱلرَّقِيب", fr:"Ar-Raqib (Le Vigilant)" },
+  { ar:"ٱلْمُجِيب", fr:"Al-Mujib (Celui qui Exauce)" },
+  { ar:"ٱلْوَاسِع", fr:"Al-Wasi‘ (L’Immense)" },
+  { ar:"ٱلْحَكِيم", fr:"Al-Hakim (Le Sage)" },
+  { ar:"ٱلْوَدُود", fr:"Al-Wadud (Le Bien-Aimant)" },
+  { ar:"ٱلْمَجِيد", fr:"Al-Majid (Le Glorieux)" },
+  { ar:"ٱلْبَاعِث", fr:"Al-Ba‘ith (Le Ressusciteur)" },
+  { ar:"ٱلشَّهِيد", fr:"Ash-Shahid (Le Témoin)" },
+  { ar:"ٱلْحَقّ", fr:"Al-Haqq (La Vérité)" },
+  { ar:"ٱلْوَكِيل", fr:"Al-Wakil (Le Garant)" },
+  { ar:"ٱلْقَوِيّ", fr:"Al-Qawiyy (Le Fort)" },
+  { ar:"ٱلْمَتِين", fr:"Al-Matin (Le Très-Ferme)" },
+  { ar:"ٱلْوَلِيّ", fr:"Al-Waliyy (Le Protecteur)" },
+  { ar:"ٱلْحَمِيد", fr:"Al-Hamid (Le Digne de Louange)" },
+  { ar:"ٱلْمُحْصِي", fr:"Al-Muhsi (Celui qui Dénombre)" },
+  { ar:"ٱلْمُبْدِئ", fr:"Al-Mubdi’ (Celui qui Initie)" },
+  { ar:"ٱلْمُعِيد", fr:"Al-Mu‘id (Celui qui Répète)" },
+  { ar:"ٱلْمُحْيِي", fr:"Al-Muhyi (Celui qui Donne la Vie)" },
+  { ar:"ٱلْمُمِيت", fr:"Al-Mumit (Celui qui Donne la Mort)" },
+  { ar:"ٱلْحَيّ", fr:"Al-Hayy (Le Vivant)" },
+  { ar:"ٱلْقَيُّوم", fr:"Al-Qayyum (L’Auto-subsistant)" },
+  { ar:"ٱلْوَاجِد", fr:"Al-Wajid (Le Riche)" },
+  { ar:"ٱلْمَاجِد", fr:"Al-Majid (Le Noble)" },
+  { ar:"ٱلْوَاحِد", fr:"Al-Wahid (L’Unique)" },
+  { ar:"ٱلْأَحَد", fr:"Al-Ahad (L’Un)" },
+  { ar:"ٱلصَّمَد", fr:"As-Samad (Le Seul à être Imploré)" },
+  { ar:"ٱلْقَادِر", fr:"Al-Qadir (Le Capable)" },
+  { ar:"ٱلْمُقْتَدِر", fr:"Al-Muqtadir (Le Très-Puissant)" },
+  { ar:"ٱلْمُقَدِّم", fr:"Al-Muqaddim (Celui qui Avance)" },
+  { ar:"ٱلْمُؤَخِّر", fr:"Al-Mu’akhkhir (Celui qui Retarde)" },
+  { ar:"ٱلْأَوَّل", fr:"Al-Awwal (Le Premier)" },
+  { ar:"ٱلْآخِر", fr:"Al-Akhir (Le Dernier)" },
+  { ar:"ٱلظَّاهِر", fr:"Az-Zahir (L’Apparent)" },
+  { ar:"ٱلْبَاطِن", fr:"Al-Batin (Le Caché)" },
+  { ar:"ٱلْوَالِي", fr:"Al-Wali (Le Gouverneur)" },
+  { ar:"ٱلْمُتَعَالِي", fr:"Al-Muta‘ali (Le Très-Élevé)" },
+  { ar:"ٱلْبَرّ", fr:"Al-Barr (Le Bienfaisant)" },
+  { ar:"ٱلتَّوَّاب", fr:"At-Tawwab (Celui qui Accepte le Repentir)" },
+  { ar:"ٱلْمُنْتَقِم", fr:"Al-Muntaqim (Le Vengeur)" },
+  { ar:"ٱلْعَفُوّ", fr:"Al-‘Afuww (L’Indulgent)" },
+  { ar:"ٱلرَّؤُوف", fr:"Ar-Ra’uf (Le Compatissant)" },
+  { ar:"مَالِكُ ٱلْمُلْك", fr:"Malik-ul-Mulk (Maître du Royaume)" },
+  { ar:"ذُو ٱلْجَلَالِ وَٱلْإِكْرَام", fr:"Dhul-Jalali wal-Ikram (Majesté & Générosité)" },
+  { ar:"ٱلْمُقْسِط", fr:"Al-Muqsit (L’Équitable)" },
+  { ar:"ٱلْجَامِع", fr:"Al-Jami‘ (Le Rassembleur)" },
+  { ar:"ٱلْغَنِيّ", fr:"Al-Ghaniyy (Le Riche)" },
+  { ar:"ٱلْمُغْنِي", fr:"Al-Mughni (Celui qui Enrichit)" },
+  { ar:"ٱلْمَانِع", fr:"Al-Mani‘ (Le Protecteur)" },
+  { ar:"ٱلضَّارّ", fr:"Ad-Darr (Celui qui Nuit)" },
+  { ar:"ٱلنَّافِع", fr:"An-Nafi‘ (Celui qui Profite)" },
+  { ar:"ٱلنُّور", fr:"An-Nur (La Lumière)" },
+  { ar:"ٱلْهَادِي", fr:"Al-Hadi (Le Guide)" },
+  { ar:"ٱلْبَدِيع", fr:"Al-Badi‘ (L’Incomparable)" },
+  { ar:"ٱلْبَاقِي", fr:"Al-Baqi (L’Éternel)" },
+  { ar:"ٱلْوَارِث", fr:"Al-Warith (L’Héritier)" },
+  { ar:"ٱلرَّشِيد", fr:"Ar-Rashid (Le Bien-Guide)" },
+  { ar:"ٱلصَّبُور", fr:"As-Sabur (Le Patient)" },
 ];
 
 function renderNames99() {
@@ -1062,6 +1326,9 @@ function renderNames99() {
   });
 }
 
+/* =========================
+   Events / Footer
+========================= */
 function renderEvents() {
   const box = el("events-list");
   const events = Array.isArray(activeMosque?.events) ? activeMosque.events : [];
@@ -1317,15 +1584,19 @@ function injectBuildBadge() {
 function setup() {
   bindModals();
   initTheme();
+
   injectGeoToggleUI();
   injectAdhanToggleUI();
   injectBuildBadge();
-  ensureAudioUnlock(); // wait for first interaction
+  ensureAudioUnlock();
 
   setupFooter();
   setupDonButtons();
   setupAdmin();
   setupTasbih();
+
+  // Outils bubbles (Tasbih/Hadith/Du'a/Dhikr)
+  setupToolsBubbles();
 
   updateClock();
   setInterval(updateClock, 1000);
@@ -1369,12 +1640,3 @@ document.addEventListener("DOMContentLoaded", () => {
   ensureAutoGeoWarmup().catch(() => {});
   attachMosque(resolveMosqueId()).catch(console.error);
 });
-
-/* =========================
-   Public category help init
-========================= */
-function updatePublicCategoryHelp() {
-  const cat = getPublicCategory();
-  const help = el("don-public-category-help");
-  if (help) help.textContent = DON_CATEGORY_HELP[cat] || "—";
-}
