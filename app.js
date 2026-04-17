@@ -6,7 +6,7 @@ const BUILD = "FINAL-8000";
 
 // =========================
 // DEFAULT (ANTI BUG)
-// ========================= 
+// =========================
 const DEFAULT_TIMINGS = {
   Fajr: "05:45",
   Sunrise: "07:00",
