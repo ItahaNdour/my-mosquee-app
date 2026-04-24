@@ -1,8 +1,13 @@
 // =========================
-// STATE
+// SAFE PATCH (NE TOUCHE PAS UI)
 // =========================
-let tasbih = 0;
 
+// ---------- STATE ----------
+let timings = null;
+let tasbih = 0;
+let goal = 33;
+
+// ---------- FALLBACK ----------
 const DEFAULT = {
   Fajr: "05:45",
   Dhuhr: "13:30",
@@ -11,27 +16,21 @@ const DEFAULT = {
   Isha: "20:30",
 };
 
-let timings = DEFAULT;
-
-// =========================
-// CLOCK
-// =========================
+// ---------- CLOCK ----------
 setInterval(() => {
   const d = new Date();
-  document.getElementById("clock").textContent =
-    d.toLocaleTimeString();
+  const el = document.getElementById("clock");
+  if (el) el.textContent = d.toLocaleTimeString();
 }, 1000);
 
-// =========================
-// TIMINGS
-// =========================
+// ---------- FETCH HORAIRES ----------
 async function loadTimings() {
   try {
-    const pos = await new Promise((res) =>
+    let lat = 14.7167, lon = -17.4677;
+
+    const pos = await new Promise(res =>
       navigator.geolocation.getCurrentPosition(res, () => res(null))
     );
-
-    let lat = 14.7167, lon = -17.4677;
 
     if (pos) {
       lat = pos.coords.latitude;
@@ -43,82 +42,98 @@ async function loadTimings() {
     );
 
     const data = await r.json();
+
+    if (!data?.data?.timings) throw "API error";
+
     timings = data.data.timings;
 
-  } catch {
+  } catch (e) {
+    console.warn("Fallback horaires", e);
     timings = DEFAULT;
   }
 
-  display();
+  displayTimings();
 }
 
-function display() {
-  for (let k in DEFAULT) {
-    document.getElementById(k.toLowerCase()).textContent =
-      timings[k] || "--:--";
+// ---------- DISPLAY ----------
+function displayTimings() {
+  if (!timings) timings = DEFAULT;
+
+  setSafe("fajr", timings.Fajr);
+  setSafe("dhuhr", timings.Dhuhr);
+  setSafe("asr", timings.Asr);
+  setSafe("maghrib", timings.Maghrib);
+  setSafe("isha", timings.Isha);
+}
+
+function setSafe(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val || "--:--";
+}
+
+// ---------- TASBIH ----------
+function updateTasbih() {
+  setSafe("tasbih-count", tasbih);
+}
+
+document.addEventListener("click", (e) => {
+  if (e.target.id === "btn-plus") {
+    if (tasbih < goal) tasbih++;
+    updateTasbih();
   }
-}
 
-display();
-loadTimings();
-
-// =========================
-// TASBIH
-// =========================
-document.getElementById("btn-plus").onclick = () => {
-  tasbih++;
-  document.getElementById("tasbih-count").textContent = tasbih;
-};
-
-document.getElementById("btn-reset").onclick = () => {
-  tasbih = 0;
-  document.getElementById("tasbih-count").textContent = tasbih;
-};
-
-// =========================
-// TOOLS SWITCH
-// =========================
-const tools = ["tasbih", "hadith", "dua", "dhikr"];
-
-tools.forEach(t => {
-  document.getElementById("btn-" + t).onclick = () => {
-    tools.forEach(x =>
-      document.getElementById(x).classList.add("hidden")
-    );
-    document.getElementById(t).classList.remove("hidden");
-  };
+  if (e.target.id === "btn-reset") {
+    tasbih = 0;
+    updateTasbih();
+  }
 });
 
-// =========================
-// CONTENT
-// =========================
-const hadiths = [
+// ---------- HADITH / DUA / DHIKR ----------
+const HADITHS = [
   ["La patience est une lumière", "As-sabr diya", "الصبر ضياء"],
-  ["Sourire est une aumône", "Tabassum sadaqa", "تبسمك صدقة"]
+  ["Sourire est une aumône", "Tabassum sadaqa", "تبسمك صدقة"],
+  ["Facilitez et ne compliquez pas", "Yassirou", "يسروا ولا تعسروا"],
 ];
 
-const duas = [
+const DUAS = [
   ["Guide-moi", "Allahumma ihdini", "اللهم اهدني"],
-  ["Pardonne-moi", "Allahumma ghfir li", "اللهم اغفر لي"]
+  ["Pardonne-moi", "Allahumma ghfir li", "اللهم اغفر لي"],
+  ["Protège-moi", "Allahumma ihfazni", "اللهم احفظني"],
 ];
 
-const dhikr = [
+const DHIKR = [
   ["SubhanAllah", "SubhanAllah", "سبحان الله"],
-  ["Alhamdulillah", "Alhamdulillah", "الحمد لله"]
+  ["Alhamdulillah", "Alhamdulillah", "الحمد لله"],
+  ["Allahu Akbar", "Allahu Akbar", "الله أكبر"],
 ];
 
-function setContent(arr, ids) {
-  const r = arr[Math.floor(Math.random() * arr.length)];
-  document.getElementById(ids[0]).textContent = r[0];
-  document.getElementById(ids[1]).textContent = r[1];
-  document.getElementById(ids[2]).textContent = r[2];
+function random(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
-document.getElementById("btn-hadith-change").onclick =
-  () => setContent(hadiths, ["hadith-fr", "hadith-ph", "hadith-ar"]);
+function setTriple(ids, data) {
+  setSafe(ids[0], data[0]);
+  setSafe(ids[1], data[1]);
+  setSafe(ids[2], data[2]);
+}
 
-document.getElementById("btn-dua-change").onclick =
-  () => setContent(duas, ["dua-fr", "dua-ph", "dua-ar"]);
+// boutons
+document.addEventListener("click", (e) => {
+  if (e.target.id === "btn-hadith-change")
+    setTriple(["hadith-fr", "hadith-ph", "hadith-ar"], random(HADITHS));
 
-document.getElementById("btn-dhikr-change").onclick =
-  () => setContent(dhikr, ["dhikr-fr", "dhikr-ph", "dhikr-ar"]);
+  if (e.target.id === "btn-dua-change")
+    setTriple(["dua-fr", "dua-ph", "dua-ar"], random(DUAS));
+
+  if (e.target.id === "btn-dhikr-change")
+    setTriple(["dhikr-fr", "dhikr-ph", "dhikr-ar"], random(DHIKR));
+});
+
+// ---------- INIT ----------
+function init() {
+  displayTimings(); // direct
+  loadTimings();   // API
+  updateTasbih();
+}
+
+document.addEventListener("DOMContentLoaded", init);
