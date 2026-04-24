@@ -1,132 +1,287 @@
-<!DOCTYPE html>
+ <!-- /index.html -->
+<!DOCTYPE html> 
 <html lang="fr">
+ <link rel="manifest" href="manifest.webmanifest?v=7700">
+<meta name="theme-color" content="#2f7d6d">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/> 
+  <title>MyMosque</title> 
 
-  <title>Mosquée</title>
-
-  <!-- PWA -->
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#2f7d6d">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
-
-  <style>
-    body {
-      font-family: Arial;
-      background: #0f172a;
-      color: white;
-      padding: 10px;
-    }
-
-    .card {
-      background: #1e293b;
-      padding: 15px;
-      border-radius: 12px;
-      margin-bottom: 15px;
-    }
-
-    .clock {
-      font-size: 32px;
-      text-align: center;
-      margin: 10px 0;
-    }
-
-    .prayer {
-      display: flex;
-      justify-content: space-between;
-      padding: 6px 0;
-    }
-
-    .tools button {
-      margin: 5px;
-      padding: 8px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-    }
-
-    .active {
-      background: #2f7d6d;
-      color: white;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    .big {
-      font-size: 26px;
-      text-align: center;
-      margin: 10px 0;
-    }
-
-    .arabic {
-      font-size: 18px;
-      text-align: right;
-    }
-
-    .small {
-      font-size: 12px;
-      opacity: 0.7;
-    }
-  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="stylesheet" href="styles.css?v=1000"/>
+ <link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2f7d6d">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 
 <body>
+  <header class="card header">
+    <button id="theme-toggle" class="icon-btn icon-btn-left" title="Mode sombre" aria-label="Mode sombre">
+      <i class="fa-solid fa-moon"></i>
+    </button>
 
-  <div class="card">
-    <h2>Mosquée</h2>
-    <div id="clock" class="clock">--:--:--</div>
+    <button id="admin-button" class="icon-btn" title="Administration" aria-label="Administration">
+      <i class="fa-solid fa-user-shield"></i>
+      <span id="admin-badge" class="admin-badge" style="display:none">0</span>
+    </button>
 
-    <div class="prayer"><span>Fajr</span><span id="fajr">--:--</span></div>
-    <div class="prayer"><span>Dhuhr</span><span id="dhuhr">--:--</span></div>
-    <div class="prayer"><span>Asr</span><span id="asr">--:--</span></div>
-    <div class="prayer"><span>Maghrib</span><span id="maghrib">--:--</span></div>
-    <div class="prayer"><span>Isha</span><span id="isha">--:--</span></div>
+    <h1 id="mosque-name" class="title">Mosquée</h1>
+
+    <div id="mosque-locked" class="mosque-locked" style="display:none">
+      <i class="fa-solid fa-lock"></i>
+      <span id="mosque-locked-name">—</span>
+    </div>
+
+    <div class="sel-row" id="mosque-select-row" style="display:none">
+      <i class="fa-solid fa-mosque muted" aria-hidden="true"></i>
+      <select id="mosque-selector" title="Mosquée"></select>
+    </div>
+
+    <div class="dates">
+      <div class="small" id="hijri-date">—</div>
+      <div class="small" id="gregorian-date">—</div>
+    </div>
+
+    <div class="clock">
+      <span id="current-time">--:--:--</span>
+    </div>
+
+    <div class="next" aria-live="polite">
+      <span class="next-name" id="next-prayer-name">Chargement...</span>
+      <span class="next-timer" id="countdown">--:--:--</span>
+    </div>
+
+    <section class="card ramadan" id="ramadan-card" style="display:none">
+      <div class="ramadan-top">
+        <div class="ramadan-left">
+          <div class="ramadan-title">🌙 Ramadan</div>
+          <div class="small" id="ramadan-sub">—</div>
+        </div>
+        <div class="ramadan-right">
+          <div class="ramadan-day" id="ramadan-day">—</div>
+          <div class="small" id="ramadan-left">—</div>
+        </div>
+      </div>
+
+      <div class="ramadan-pill small" id="ramadan-duration">—</div>
+
+      <div class="ramadan-grid">
+        <div class="ramadan-box">
+          <div class="ramadan-box-title">Suhoor (Fajr)</div>
+          <div class="ramadan-box-time" id="ramadan-suhoor">--:--</div>
+        </div>
+        <div class="ramadan-box">
+          <div class="ramadan-box-title">Iftar (Maghrib)</div>
+          <div class="ramadan-box-time" id="ramadan-iftar">--:--</div>
+        </div>
+      </div>
+    </section>
+  </header>
+
+  <main class="main">
+    <section class="card list" aria-label="Horaires de prière">
+      <div class="row" id="fajr-item"><span class="name" id="fajr-name">Souba (Fajr)</span><span class="time" id="fajr-time">--:--</span></div>
+      <div class="row" id="dhuhr-item"><span class="name" id="dhuhr-name">Tisbar (Dhuhr)</span><span class="time" id="dhuhr-time">--:--</span></div>
+      <div class="row" id="asr-item"><span class="name" id="asr-name">Takusan (Asr)</span><span class="time" id="asr-time">--:--</span></div>
+      <div class="row" id="maghrib-item"><span class="name" id="maghrib-name">Timis (Maghrib)</span><span class="time" id="maghrib-time">--:--</span></div>
+      <div class="row" id="isha-item"><span class="name" id="isha-name">Guéwé (Isha)</span><span class="time" id="isha-time">--:--</span></div>
+    </section>
+
+    <section class="card duo">
+      <div class="duo-grid">
+        <div class="duo-item">
+          <div class="duo-title">Jumua</div>
+          <div class="duo-time" id="jumua-time">13:30</div>
+        </div>
+        <div class="duo-item">
+          <div class="duo-title">Chourouk</div>
+          <div class="duo-time" id="shuruq-time">--:--</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card don-public">
+      <div class="section-title">
+        <h3>💰 Faire un don</h3>
+        <span class="small">Wave / Orange / Espèces</span>
+      </div>
+
+      <div class="don-public-kpis">
+        <div class="kpi">
+          <div class="kpi-label">Objectif (mois)</div>
+          <div class="kpi-val"><span id="don-public-goal">0</span> CFA</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Collecté (mois)</div>
+          <div class="kpi-val"><span id="don-public-month">0</span> CFA</div>
+        </div>
+      </div>
+
+      <div class="progress" aria-label="Progression collecte">
+        <span id="don-public-bar"></span>
+      </div>
+
+      <div class="don-category">
+        <div class="don-category-label">
+          <i class="fa-solid fa-tags"></i> Catégorie
+        </div>
+        <select id="don-public-category" title="Catégorie du don">
+          <option value="Zakat">Zakat</option>
+          <option value="Sadaqa" selected>Sadaqa</option>
+          <option value="Travaux">Travaux / Entretien</option>
+        </select>
+        <div class="small" id="don-public-category-help">—</div>
+      </div>
+
+      <ul class="don-lines">
+        <li><span><i class="fa-solid fa-wallet" style="color:#0ea5e9"></i> Wave</span><strong id="wave-number">—</strong></li>
+        <li><span><i class="fa-solid fa-mobile-screen-button" style="color:#f97316"></i> Orange</span><strong id="orange-number">—</strong></li>
+        <li><span><i class="fa-solid fa-hand-holding-heart" style="color:#16a34a"></i> Espèces</span><strong id="cash-info">Mosquée</strong></li>
+      </ul>
+
+      <div class="don-cta">
+        <button class="btn btn-primary" id="btn-wave"><i class="fa-solid fa-hand-holding-dollar"></i> Wave</button>
+        <button class="btn btn-primary" id="btn-orange"><i class="fa-solid fa-hand-holding-dollar"></i> Orange</button>
+        <button class="btn btn-ghost" id="btn-claimed"><i class="fa-brands fa-whatsapp"></i> J’ai donné</button>
+      </div>
+
+      <div class="small don-hint">Après “J’ai donné”, ton don passe en <strong>attente</strong> jusqu’à confirmation par la mosquée.</div>
+    </section>
+
+    <section class="card tools">
+      <div class="tools-head">
+        <h3>🧩 Outils</h3>
+      </div>
+
+      <div class="tools-grid tools-grid-one">
+        <div class="tool">
+          <div class="tool-title"><i class="fa-solid fa-hand"></i> Tasbih</div>
+          <div class="tasbih">
+            <div class="tasbih-count" id="tasbih-count">0</div>
+            <div class="tasbih-actions">
+              <button class="btn btn-primary" id="tasbih-plus">+1</button>
+              <button class="btn btn-ghost" id="tasbih-reset">Reset</button>
+            </div>
+            <div class="small">Compteur local sur ton téléphone.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="status" class="status"></div>
+  </main>
+
+  <footer class="nav">
+    <button id="events-btn" class="nav-btn"><i class="fa-solid fa-calendar-alt"></i><span>Évén.</span></button>
+    <button id="names-btn" class="nav-btn"><i class="fa-solid fa-kaaba"></i><span>Noms</span></button>
+    <button id="announce-btn" class="nav-btn" style="position:relative">
+      <i class="fa-solid fa-bell"></i><span>Annon.</span><span id="notif" class="notif">1</span>
+    </button>
+    <button id="about-btn" class="nav-btn"><i class="fa-solid fa-circle-info"></i><span>À prop.</span></button>
+    <button id="share-btn" class="nav-btn"><i class="fa-brands fa-whatsapp"></i><span>Partag.</span></button>
+  </footer>
+
+  <div id="modal-ann" class="modal"><div class="box"><span class="close">&times;</span><h3>Annonces</h3><p id="announcement-text">—</p></div></div>
+  <div id="modal-events" class="modal"><div class="box"><span class="close">&times;</span><h3>Événements</h3><div id="events-list">—</div></div></div>
+  <div id="modal-names" class="modal"><div class="box"><span class="close">&times;</span><h3 id="names-header">Les 99 Noms d'Allah</h3><ul id="names-list"></ul></div></div>
+  <div id="modal-about" class="modal"><div class="box"><span class="close">&times;</span><h3>À propos</h3><p><strong>Contact :</strong> <span id="about-contact-name">—</span><br><strong>Téléphone :</strong> <span id="about-contact-phone">—</span></p></div></div>
+
+  <div id="modal-don" class="modal" role="dialog" aria-modal="true">
+    <div class="box">
+      <span class="close">&times;</span>
+      <h3>Confirmation du don</h3>
+      <div class="small" style="margin-top:-6px">Remplis ces infos, puis la mosquée confirmera.</div>
+
+      <label class="m-label">Montant (CFA)</label>
+      <input id="don-amount" type="number" placeholder="Ex: 1000"/>
+
+      <label class="m-label">Catégorie</label>
+      <select id="don-category">
+        <option>Zakat</option>
+        <option selected>Sadaqa</option>
+        <option>Travaux</option>
+      </select>
+
+      <label class="m-label">Référence / Remarque</label>
+      <input id="don-ref" placeholder="Ex: reçu Wave, note…"/>
+
+      <button id="don-confirm" class="save" style="margin-top:12px;background:var(--green)">Confirmer</button>
+    </div>
   </div>
 
-  <div class="card tools">
-    <h3>Outils</h3>
-
-    <button id="btn-tasbih">Tasbih</button>
-    <button id="btn-hadith">Hadith</button>
-    <button id="btn-dua">Du'a</button>
-    <button id="btn-dhikr">Dhikr</button>
-
-    <!-- TASBIH -->
-    <div id="tasbih" class="tool">
-      <div id="tasbih-count" class="big">0</div>
-      <button id="btn-plus">+1</button>
-      <button id="btn-reset">Reset</button>
+  <div id="modal-popup" class="modal" role="dialog" aria-modal="true">
+    <div class="box popup-box">
+      <h3 id="popup-title">Merci 🙏</h3>
+      <p id="popup-text" class="popup-text">—</p>
+      <button id="popup-ok" class="save" style="background:var(--green)">OK</button>
+      <div class="small" style="margin-top:10px; text-align:center">Ce message se ferme aussi automatiquement.</div>
     </div>
-
-    <!-- HADITH -->
-    <div id="hadith" class="tool hidden">
-      <div id="hadith-fr"></div>
-      <div id="hadith-ph" class="small"></div>
-      <div id="hadith-ar" class="arabic"></div>
-      <button id="btn-hadith-change">Changer</button>
-    </div>
-
-    <!-- DUA -->
-    <div id="dua" class="tool hidden">
-      <div id="dua-fr"></div>
-      <div id="dua-ph" class="small"></div>
-      <div id="dua-ar" class="arabic"></div>
-      <button id="btn-dua-change">Changer</button>
-    </div>
-
-    <!-- DHIKR -->
-    <div id="dhikr" class="tool hidden">
-      <div id="dhikr-fr"></div>
-      <div id="dhikr-ph" class="small"></div>
-      <div id="dhikr-ar" class="arabic"></div>
-      <button id="btn-dhikr-change">Changer</button>
-    </div>
-
   </div>
 
-  <script src="app.js?v=8000"></script>
+  <div id="modal-admin" class="modal" role="dialog" aria-modal="true">
+    <div class="box admin">
+      <span class="close">&times;</span>
+      <h3>Panneau d'administration</h3>
+      <p class="small" id="role-hint"></p>
+
+      <div class="row" id="super-row" style="display:none">
+        <div style="flex:1">
+          <label>Mosquée</label>
+          <select id="adm-mosque"></select>
+        </div>
+        <div style="flex:1">
+          <label>Nouvelle mosquée (nom)</label>
+          <input id="adm-new-name" placeholder="Ex: Medina Centre"/>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="add-mosque" class="save" style="padding:10px 12px; background:#16a34a">Ajouter</button>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="del-mosque" class="save" style="padding:10px 12px; background:#ef4444">Supprimer</button>
+        </div>
+      </div>
+
+      <label>Nom de la mosquée</label><input id="adm-name"/>
+      <label>Ville (API)</label><select id="adm-city"></select>
+
+      <div class="row">
+        <div style="flex:1"><label>Wave Money</label><input id="adm-wave"/></div>
+        <div style="flex:1"><label>Orange Money</label><input id="adm-orange"/></div>
+      </div>
+
+      <div class="row">
+        <div style="flex:1"><label>Contact (nom)</label><input id="adm-contact"/></div>
+        <div style="flex:1"><label>Téléphone WhatsApp</label><input id="adm-phone"/></div>
+      </div>
+
+      <label>Jumua (HH:MM)</label><input id="adm-jumua" type="time"/>
+      <label>Annonces</label><textarea id="adm-ann" rows="3"></textarea>
+      <label>Événements (un par ligne : Titre | Date)</label><textarea id="adm-events" rows="4"></textarea>
+
+      <h3 style="margin-top:18px">Collecte (public)</h3>
+      <div class="row">
+        <div style="flex:1"><label>Objectif mensuel (CFA)</label><input id="adm-goal" type="number" placeholder="500000"/></div>
+      </div>
+
+      <h3 style="margin-top:18px">Demandes de dons (à valider)</h3>
+      <div class="small">Les dons ne comptent dans le total qu’après validation.</div>
+
+      <table class="table" id="req-table" style="margin-top:8px">
+        <thead><tr><th>Date</th><th>Montant</th><th>Cat.</th><th>Réf.</th><th>Statut</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <button id="save" class="save"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button>
+    </div>
+  </div>
+
+  <script type="module" src="app.js?v=7700"></script>
 </body>
 </html>
